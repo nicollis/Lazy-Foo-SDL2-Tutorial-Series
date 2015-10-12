@@ -2,7 +2,7 @@
 #ifndef _OGE_TIMER_H_
 #define _OGE_TIMER_H_
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 class OTimer
 {
