@@ -13,8 +13,8 @@ public:
 	OTexture(SDL_Renderer* renderer);
 	~OTexture();
 
-	//Load image at specified path
-	bool loadFromFile(std::string path);
+	//Load image at specified path, with color key for transparency
+	bool loadFromFile(std::string path, SDL_Color colorKey = { 0xFF, 0xFF, 0xFF });
 
 	//Deaccocates Texture
 	void free();

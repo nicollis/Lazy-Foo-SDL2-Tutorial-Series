@@ -23,13 +23,13 @@ public:
 	void handleEvent(SDL_Event &e);
 
 	//Moves the dot and check for collision
-	void move(std::vector<SDL_Rect>& otherColliders);
+	void move(SDL_Rect &square, Circle& circle);
 
 	//Shows the dot on the screen
 	void render(OTexture& dotTexture);
 
 	//Gets the collision boxes
-	std::vector<SDL_Rect>& getColliders();
+	Circle& getColliders();
 
 private:
 	//The X and Y offset of the dot
@@ -42,7 +42,7 @@ private:
 	int mScreenWidth, mScreenHeight;
 
 	//Dot's collision box
-	std::vector<SDL_Rect> mColliders;
+	Circle mColliders;
 
 	//Moves the collision boxes relative to the dot's offset
 	void shiftColliders();

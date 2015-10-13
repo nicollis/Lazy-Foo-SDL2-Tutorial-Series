@@ -7,7 +7,7 @@ Dot::Dot(int x, int y, int screen_width, int screen_height)
 	mPosY = y;
 
 	//Create the necessary SDL_Rects
-	mColliders.resize(11);
+	mColliders.r = DOT_WIDTH / 2;
 
 	//Initialize the velocity
 	mVelX = 0;
@@ -15,40 +15,6 @@ Dot::Dot(int x, int y, int screen_width, int screen_height)
 
 	mScreenWidth = screen_width;
 	mScreenHeight = screen_height;
-
-	//Initialize the collision boxes' width and height
-	mColliders[0].w = 6;
-	mColliders[0].h = 1;
-
-	mColliders[1].w = 10;
-	mColliders[1].h = 1;
-
-	mColliders[2].w = 14;
-	mColliders[2].h = 1;
-
-	mColliders[3].w = 16;
-	mColliders[3].h = 2;
-
-	mColliders[4].w = 18;
-	mColliders[4].h = 2;
-
-	mColliders[5].w = 20;
-	mColliders[5].h = 6;
-
-	mColliders[6].w = 18;
-	mColliders[6].h = 2;
-
-	mColliders[7].w = 16;
-	mColliders[7].h = 2;
-
-	mColliders[8].w = 14;
-	mColliders[8].h = 1;
-
-	mColliders[9].w = 10;
-	mColliders[9].h = 1;
-
-	mColliders[10].w = 6;
-	mColliders[10].h = 1;
 
 	//Initialize colliders relative to position
 	shiftColliders();
@@ -81,15 +47,15 @@ void Dot::handleEvent(SDL_Event &e)
 	}//end else if key up
 }//end handle event method
 
-void Dot::move(std::vector<SDL_Rect>& otherColliders)
+void Dot::move(SDL_Rect &square, Circle& circle)
 {
 	//Move the dot left or right
 	mPosX += mVelX;
 	shiftColliders();
 
 	//If the dot went to far to hte left or right
-	if ((mPosX < 0) || (mPosX + DOT_WIDTH > mScreenWidth) || 
-		checkCollision(mColliders, otherColliders))
+	if ((mPosX - mColliders.r < 0) || (mPosX + mColliders.r > mScreenWidth) || 
+		checkCollision(mColliders, square) || checkCollision(mColliders, circle))
 	{
 		//Move back
 		mPosX -= mVelX;
@@ -101,8 +67,8 @@ void Dot::move(std::vector<SDL_Rect>& otherColliders)
 	shiftColliders();
 
 	//If the dot went to far to up or down
-	if ((mPosY < 0) || (mPosY + DOT_HEIGHT > mScreenHeight) ||
-		checkCollision(mColliders, otherColliders))
+	if ((mPosY - mColliders.r < 0) || (mPosY + mColliders.r > mScreenHeight) ||
+		checkCollision(mColliders, square) || checkCollision(mColliders, circle))
 	{
 		//Move back
 		mPosY -= mVelY;
@@ -113,29 +79,17 @@ void Dot::move(std::vector<SDL_Rect>& otherColliders)
 void Dot::render(OTexture& dotTexture)
 {
 	//Show the dot
-	dotTexture.render(mPosX, mPosY);
+	dotTexture.render(mPosX - mColliders.r, mPosY - mColliders.r);
 }//end render method
 
 void Dot::shiftColliders()
 {
-	//The row offset
-	int r = 0;
-
-	//Go though the dot's collision boxes
-	for (int set = 0; set < mColliders.size(); ++set)
-	{
-		//Center the collision box
-		mColliders[set].x = mPosX + (DOT_WIDTH - mColliders[set].w) / 2;
-
-		//Set the collision box at its row offset
-		mColliders[set].y = mPosY + r;
-
-		//Move the row offset down the height of the collision box
-		r += mColliders[set].h;
-	}
+	//Align collider to center of dot
+	mColliders.x = mPosX;
+	mColliders.y = mPosY;
 }
 
-std::vector<SDL_Rect>& Dot::getColliders()
+Circle& Dot::getColliders()
 {
 	return mColliders;
 }

@@ -161,10 +161,17 @@ int main( int argc, char* args[] )
 			SDL_Event e;
 
 			//The dot what will be moving around on the screen
-			Dot dot(0, 0);
+			Dot dot(Dot::DOT_WIDTH/2, Dot::DOT_HEIGHT/2);
 
 			//The dot that will be collided against
 			Dot otherDot(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4);
+
+			//Set the wall
+			SDL_Rect wall;
+			wall.x = 300;
+			wall.y = 40;
+			wall.w = 40;
+			wall.h = 400;
 
 			//While application is running
 			while (!quit)
@@ -187,11 +194,15 @@ int main( int argc, char* args[] )
 				}// end event pool loop
 
 				//Move the dot
-				dot.move(otherDot.getColliders());
+				dot.move(wall, otherDot.getColliders());
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
+
+				//Render wall
+				SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+				SDL_RenderDrawRect(gRenderer, &wall);
 
 				//Render textures
 				dot.render(gDotTexture);

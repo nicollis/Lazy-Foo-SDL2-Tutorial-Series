@@ -14,7 +14,7 @@ OTexture::~OTexture()
 	mRenderer = NULL;
 }
 
-bool OTexture::loadFromFile(std::string path)
+bool OTexture::loadFromFile(std::string path, SDL_Color colorKey)
 {
 	//Get rid of preexisiting texture
 	free();
@@ -31,8 +31,8 @@ bool OTexture::loadFromFile(std::string path)
 	else
 	{
 		//Color key image
-		SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0, 0xFF, 0xFF));
-
+		SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, colorKey.r, colorKey.g, colorKey.b));
+		
 		//Create texture from surface pixels
 		newTexture = SDL_CreateTextureFromSurface(mRenderer, loadedSurface);
 		if (newTexture == NULL)
