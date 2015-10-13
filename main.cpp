@@ -2,8 +2,8 @@
 and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
-#include <SDL2/SDL.h>
-#include <SDL2_image/SDL_image.h>
+#include <SDL.h>
+#include <SDL_image.h>
 
 #include <stdio.h>
 #include <string>
@@ -161,7 +161,10 @@ int main( int argc, char* args[] )
 			SDL_Event e;
 
 			//The dot what will be moving around on the screen
-			Dot dot = Dot(SCREEN_WIDTH, SCREEN_HEIGHT);
+			Dot dot(0, 0);
+
+			//The dot that will be collided against
+			Dot otherDot(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4);
 
 			//While application is running
 			while (!quit)
@@ -183,15 +186,16 @@ int main( int argc, char* args[] )
 					dot.handleEvent(e);
 				}// end event pool loop
 
-				//move the dot
-				dot.move();
+				//Move the dot
+				dot.move(otherDot.getColliders());
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
 				//Render textures
-				dot.render(&gDotTexture);
+				dot.render(gDotTexture);
+				otherDot.render(gDotTexture);
 
 				//Update Screen
 				SDL_RenderPresent(gRenderer);

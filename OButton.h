@@ -2,7 +2,7 @@
 #ifndef _OGE_BUTTON_H_
 #define _OGE_BUTTON_H_
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include "OTexture.h"
 
 enum OButtonSprite
