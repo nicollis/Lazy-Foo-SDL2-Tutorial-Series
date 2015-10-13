@@ -14,22 +14,23 @@ public:
 	static const int DOT_HEIGHT = 20;
 
 	//Maximum axis velocity of the dot
-	static const int DOT_VEL = 1;
+	static const int DOT_VEL = 10;
 
 	//Initialize the variables
-	Dot(int x, int y, int screen_width = 640, int screen_height = 480);
+	Dot(int levelWidth = 1280, int levelHeight = 960);
 
 	//Takes key presses and adjusts the dot's velocity
 	void handleEvent(SDL_Event &e);
 
-	//Moves the dot and check for collision
-	void move(SDL_Rect &square, Circle& circle);
+	//Moves the dot
+	void move();
 
 	//Shows the dot on the screen
-	void render(OTexture& dotTexture);
+	void render(OTexture& dotTexture, int camX, int camY);
 
-	//Gets the collision boxes
-	Circle& getColliders();
+	//Position accessors
+	int getPosX();
+	int getPosY();
 
 private:
 	//The X and Y offset of the dot
@@ -39,11 +40,5 @@ private:
 	int mVelX, mVelY;
 
 	//Screen size to keep dot in box
-	int mScreenWidth, mScreenHeight;
-
-	//Dot's collision box
-	Circle mColliders;
-
-	//Moves the collision boxes relative to the dot's offset
-	void shiftColliders();
+	int mLevelWidth, mLevelHeight;
 };

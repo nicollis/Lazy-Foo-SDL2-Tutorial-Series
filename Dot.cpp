@@ -1,23 +1,18 @@
 #include "Dot.h"
 
-Dot::Dot(int x, int y, int screen_width, int screen_height)
+Dot::Dot(int levelWidth, int levelHeight)
 {
 	//Initialize of Offsets
-	mPosX = x;
-	mPosY = y;
+	mPosX = 0;
+	mPosY = 0;
 
-	//Create the necessary SDL_Rects
-	mColliders.r = DOT_WIDTH / 2;
 
 	//Initialize the velocity
 	mVelX = 0;
 	mVelY = 0;
 
-	mScreenWidth = screen_width;
-	mScreenHeight = screen_height;
-
-	//Initialize colliders relative to position
-	shiftColliders();
+	mLevelWidth = levelWidth;
+	mLevelHeight = levelHeight;
 }
 
 void Dot::handleEvent(SDL_Event &e)
@@ -47,49 +42,41 @@ void Dot::handleEvent(SDL_Event &e)
 	}//end else if key up
 }//end handle event method
 
-void Dot::move(SDL_Rect &square, Circle& circle)
+void Dot::move()
 {
 	//Move the dot left or right
 	mPosX += mVelX;
-	shiftColliders();
 
 	//If the dot went to far to hte left or right
-	if ((mPosX - mColliders.r < 0) || (mPosX + mColliders.r > mScreenWidth) || 
-		checkCollision(mColliders, square) || checkCollision(mColliders, circle))
+	if ((mPosX < 0) || (mPosX + DOT_WIDTH > mLevelWidth))
 	{
 		//Move back
 		mPosX -= mVelX;
-		shiftColliders();
 	}
 
 	//Move the dot up or down
 	mPosY += mVelY;
-	shiftColliders();
 
 	//If the dot went to far to up or down
-	if ((mPosY - mColliders.r < 0) || (mPosY + mColliders.r > mScreenHeight) ||
-		checkCollision(mColliders, square) || checkCollision(mColliders, circle))
+	if ((mPosY < 0) || (mPosY + DOT_HEIGHT > mLevelHeight))
 	{
 		//Move back
 		mPosY -= mVelY;
-		shiftColliders();
 	}
 }// end move method 
 
-void Dot::render(OTexture& dotTexture)
+void Dot::render(OTexture& dotTexture, int camX, int camY)
 {
 	//Show the dot
-	dotTexture.render(mPosX - mColliders.r, mPosY - mColliders.r);
+	dotTexture.render(mPosX - camX, mPosY - camY);
 }//end render method
 
-void Dot::shiftColliders()
+int Dot::getPosX()
 {
-	//Align collider to center of dot
-	mColliders.x = mPosX;
-	mColliders.y = mPosY;
+	return mPosX;
 }
 
-Circle& Dot::getColliders()
+int Dot::getPosY()
 {
-	return mColliders;
+	return mPosY;
 }

@@ -12,6 +12,10 @@ and may not be redistributed without written permission.*/
 #include "OTimer.h"
 #include "Dot.h"
 
+//The dimensions of the level;
+const int LEVEL_WIDTH = 1280;
+const int LEVEL_HEIGHT = 960;
+
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -24,6 +28,9 @@ SDL_Renderer* gRenderer = NULL;
 
 //Dot Texture
 OTexture gDotTexture = NULL;
+
+//Background texture
+OTexture gBGTexture = NULL;
 
 //Starts up SDL and creates a window
 bool init();
@@ -108,10 +115,16 @@ bool loadMedia()
 
 	//Provide texture with renderer
 	gDotTexture = OTexture(gRenderer);
+	gBGTexture = OTexture(gRenderer);
 
-	if (!gDotTexture.loadFromFile("26/dot.bmp"))
+	if (!gDotTexture.loadFromFile("30/dot.bmp", { 0,255,255 }))
 	{
 		printf("Failed to load Dot Texture!");
+		success = false;
+	}
+	if (!gBGTexture.loadFromFile("30/bg.png"))
+	{
+		printf("Failed to load BG image!");
 		success = false;
 	}
 
@@ -122,6 +135,7 @@ void close()
 {
 	//Free loaded images
 	gDotTexture.free();
+	gBGTexture.free();
 	
 
 	//Destroy window
@@ -161,17 +175,10 @@ int main( int argc, char* args[] )
 			SDL_Event e;
 
 			//The dot what will be moving around on the screen
-			Dot dot(Dot::DOT_WIDTH/2, Dot::DOT_HEIGHT/2);
+			Dot dot;
 
-			//The dot that will be collided against
-			Dot otherDot(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4);
-
-			//Set the wall
-			SDL_Rect wall;
-			wall.x = 300;
-			wall.y = 40;
-			wall.w = 40;
-			wall.h = 400;
+			//The camera area
+			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 
 			//While application is running
 			while (!quit)
@@ -194,19 +201,39 @@ int main( int argc, char* args[] )
 				}// end event pool loop
 
 				//Move the dot
-				dot.move(wall, otherDot.getColliders());
+				dot.move();
+
+				//Canter the camera over the dot
+				camera.x = (dot.getPosX() + Dot::DOT_WIDTH / 2) - SCREEN_WIDTH / 2;
+				camera.y = (dot.getPosY() + Dot::DOT_HEIGHT / 2) - SCREEN_HEIGHT / 2;
+
+				//Keep the camera in bounds
+				if (camera.x < 0)
+				{
+					camera.x = 0;
+				}
+				if (camera.y < 0)
+				{
+					camera.y = 0;
+				}
+				if (camera.x > LEVEL_WIDTH - camera.w)
+				{
+					camera.x = LEVEL_WIDTH - camera.w;
+				}
+				if (camera.y > LEVEL_HEIGHT - camera.h)
+				{
+					camera.y = LEVEL_HEIGHT - camera.h;
+				}
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				//Render wall
-				SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-				SDL_RenderDrawRect(gRenderer, &wall);
+				//Render backgound 
+				gBGTexture.render(0, 0, &camera);
 
 				//Render textures
-				dot.render(gDotTexture);
-				otherDot.render(gDotTexture);
+				dot.render(gDotTexture, camera.x, camera.y);
 
 				//Update Screen
 				SDL_RenderPresent(gRenderer);
