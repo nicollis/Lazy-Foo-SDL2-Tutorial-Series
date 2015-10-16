@@ -65,10 +65,10 @@ void Dot::move()
 	}
 }// end move method 
 
-void Dot::render(OTexture& dotTexture, int camX, int camY)
+void Dot::render(OTexture& dotTexture)
 {
 	//Show the dot
-	dotTexture.render(mPosX - camX, mPosY - camY);
+	dotTexture.render(mPosX, mPosY);
 }//end render method
 
 int Dot::getPosX()

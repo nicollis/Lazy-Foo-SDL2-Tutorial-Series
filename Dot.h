@@ -26,7 +26,7 @@ public:
 	void move();
 
 	//Shows the dot on the screen
-	void render(OTexture& dotTexture, int camX, int camY);
+	void render(OTexture& dotTexture);
 
 	//Position accessors
 	int getPosX();

@@ -4,13 +4,14 @@ and may not be redistributed without written permission.*/
 //Using SDL and standard IO
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 
 #include <stdio.h>
 #include <string>
 
 #include "OTexture.h"
 #include "OTimer.h"
-#include "Dot.h"
+#include "OFontTexture.h"
 
 //The dimensions of the level;
 const int LEVEL_WIDTH = 1280;
@@ -26,11 +27,11 @@ SDL_Window* gWindow = NULL;
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
 
-//Dot Texture
-OTexture gDotTexture = NULL;
+TTF_Font* gFont;
 
-//Background texture
-OTexture gBGTexture = NULL;
+//Font Textures
+OFontTexture gPromptTextTexture = NULL;
+OFontTexture gInputTextTexture = NULL;
 
 //Starts up SDL and creates a window
 bool init();
@@ -113,20 +114,23 @@ bool loadMedia()
 {
 	bool success = true;
 
-	//Provide texture with renderer
-	gDotTexture = OTexture(gRenderer);
-	gBGTexture = OTexture(gRenderer);
+	gFont = TTF_OpenFont("22/lazy.ttf", 20);
+	if (gFont == NULL)
+	{
+		printf("Failed to load font file!");
+		success = false;
+	}
 
-	if (!gDotTexture.loadFromFile("30/dot.bmp", { 0,255,255 }))
+	//Provide texture with renderer
+	gPromptTextTexture = OFontTexture(gRenderer, gFont);
+	gInputTextTexture = OFontTexture(gRenderer, gFont);
+
+	if (!gPromptTextTexture.loadFromRenderedText("Enter Text:", { 0,0,0 }))
 	{
-		printf("Failed to load Dot Texture!");
+		printf("Failed to load from Rendered Text!");
 		success = false;
 	}
-	if (!gBGTexture.loadFromFile("30/bg.png"))
-	{
-		printf("Failed to load BG image!");
-		success = false;
-	}
+	
 
 	return success;
 }//end loadMedia
@@ -134,8 +138,10 @@ bool loadMedia()
 void close()
 {
 	//Free loaded images
-	gDotTexture.free();
-	gBGTexture.free();
+	gPromptTextTexture.free();
+	gInputTextTexture.free();
+	TTF_CloseFont(gFont);
+	gFont = NULL;
 	
 
 	//Destroy window
@@ -174,15 +180,26 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//The dot what will be moving around on the screen
-			Dot dot;
+			//Set text color as black
+			SDL_Color textColor = { 0, 0, 0, 0xFF };
 
-			//The camera area
-			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+			//The current input text
+			std::string inputText = "Some Text";
+			gInputTextTexture.loadFromRenderedText(inputText, textColor);
+
+			//Enable Text Input
+			SDL_StartTextInput();
+
+			//The background scrolling offset
+			int scrollingOffset = 0;
 
 			//While application is running
 			while (!quit)
 			{
+
+				//Render text flag
+				bool renderText = false;
+
 				//Handle events on queue
 				while (SDL_PollEvent(&e) != 0)
 				{
@@ -193,47 +210,67 @@ int main( int argc, char* args[] )
 					}//end if
 					else if (e.type == SDL_KEYDOWN)
 					{
-						
+						//Handle backspace
+						if (e.key.keysym.sym == SDLK_BACKSPACE && inputText.length() > 0)
+						{
+							//lop off character
+							inputText.pop_back();
+							renderText = true;
+						}
+						//Handle copy
+						else if (e.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL)
+						{
+							SDL_SetClipboardText(inputText.c_str());
+						}
+						//Handle paste
+						else if (e.key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL)
+						{
+							inputText = SDL_GetClipboardText();
+							renderText = true;
+						}
 					}//end if else key event
+					//Special text input event
+					else if (e.type == SDL_TEXTINPUT)
+					{
+						//Not copy or paste
+						if (!((e.text.text[0] == 'c' || e.text.text[0] == 'C') &&
+							(e.text.text[0] == 'v' || e.text.text[0] == 'V') &&
+							SDL_GetModState() & KMOD_CTRL))
+						{
+							//Append character
+							inputText += e.text.text;
+							renderText = true;
+						}
+					}
+				}
 					
-					//Handle dot events
-					dot.handleEvent(e);
-				}// end event pool loop
+					
+				//Render text if needed
+				if (renderText)
+				{
+					//Text is not empty
+					if (inputText != "")
+					{
+						//render new text
+						gInputTextTexture.loadFromRenderedText(inputText.c_str(), textColor);
+					}
+					//Text is empty
+					else
+					{
+						//Render space texture
+						gInputTextTexture.loadFromRenderedText(" ", textColor);
+					}
+				}
 
-				//Move the dot
-				dot.move();
-
-				//Canter the camera over the dot
-				camera.x = (dot.getPosX() + Dot::DOT_WIDTH / 2) - SCREEN_WIDTH / 2;
-				camera.y = (dot.getPosY() + Dot::DOT_HEIGHT / 2) - SCREEN_HEIGHT / 2;
-
-				//Keep the camera in bounds
-				if (camera.x < 0)
-				{
-					camera.x = 0;
-				}
-				if (camera.y < 0)
-				{
-					camera.y = 0;
-				}
-				if (camera.x > LEVEL_WIDTH - camera.w)
-				{
-					camera.x = LEVEL_WIDTH - camera.w;
-				}
-				if (camera.y > LEVEL_HEIGHT - camera.h)
-				{
-					camera.y = LEVEL_HEIGHT - camera.h;
-				}
+					
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				//Render backgound 
-				gBGTexture.render(0, 0, &camera);
-
-				//Render textures
-				dot.render(gDotTexture, camera.x, camera.y);
+				//Render Textures
+				gPromptTextTexture.render((SCREEN_WIDTH - gPromptTextTexture.getWidth()) / 2, 0);
+				gInputTextTexture.render((SCREEN_WIDTH - gInputTextTexture.getWidth()) / 2, gPromptTextTexture.getHeight());
 
 				//Update Screen
 				SDL_RenderPresent(gRenderer);
