@@ -27,11 +27,16 @@ SDL_Window* gWindow = NULL;
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
 
+//Data points
+const int TOTAL_DATA = 10;
+Sint32 gData[TOTAL_DATA];
+
+//Font
 TTF_Font* gFont;
 
 //Font Textures
 OFontTexture gPromptTextTexture = NULL;
-OFontTexture gInputTextTexture = NULL;
+OFontTexture gDataTextures[TOTAL_DATA];
 
 //Starts up SDL and creates a window
 bool init();
@@ -80,7 +85,7 @@ bool init()
 			{
 				//initalize renderer color
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-
+#ifdef _SDL_IMAGE_H
 				//initialize PNG loading
 				int imageFlags = IMG_INIT_PNG;
 				if (!(IMG_Init(imageFlags)& imageFlags))
@@ -88,7 +93,7 @@ bool init()
 					printf("SDL_image could not initialize! SDL_Image Error: %s\n", IMG_GetError());
 					sucess = false;
 				}//end image init else
-
+#endif
 #ifdef _SDL_TTF_H
 				 //Initialize SDL_ttf
 				if (TTF_Init() == -1)
@@ -114,21 +119,77 @@ bool loadMedia()
 {
 	bool success = true;
 
-	gFont = TTF_OpenFont("22/lazy.ttf", 20);
+	//Text rendering color
+	SDL_Color textColor = { 0,0,0,0xFF };
+	SDL_Color highlightColor = { 0xFF, 0, 0, 0xFF };
+
+	
+
+	//Open file for reading in binary
+	SDL_RWops* file = SDL_RWFromFile("33/nums.bin", "r+b");
+	//File does not exist
+	if (file == NULL)
+	{
+		printf("Warning: Unable to open file! SDL Error: %s\n", SDL_GetError());
+
+		//Create file for writing
+		file = SDL_RWFromFile("33/nums.bin", "w+b");
+		if (file != NULL)
+		{
+			printf("New file created!\n");
+
+			//Initalize data
+			for (int i = 0; i < TOTAL_DATA; ++i)
+			{
+				gData[i] = 0;
+				SDL_RWwrite(file, &gData[i], sizeof(Sint32), 1);
+			}//end for
+
+			//Close file handler
+			SDL_RWclose(file);
+		}//end if file not nill
+		else
+		{
+			printf("Error: Unable to create file! SDL Error: %s\n", SDL_GetError());
+			success = false;
+		}
+	}//end if file equils null
+	else
+	{
+		//Load data
+		printf("Reading file...!\n");
+		for (int i = 0; i < TOTAL_DATA; ++i)
+		{
+			SDL_RWread(file, &gData[i], sizeof(Sint32), 1);
+		}
+		//Close file handler
+		SDL_RWclose(file);
+	}//end else 
+
+	gFont = TTF_OpenFont("33/lazy.ttf", 20);
 	if (gFont == NULL)
 	{
 		printf("Failed to load font file!");
 		success = false;
 	}
-
-	//Provide texture with renderer
-	gPromptTextTexture = OFontTexture(gRenderer, gFont);
-	gInputTextTexture = OFontTexture(gRenderer, gFont);
-
-	if (!gPromptTextTexture.loadFromRenderedText("Enter Text:", { 0,0,0 }))
+	else
 	{
-		printf("Failed to load from Rendered Text!");
-		success = false;
+		gPromptTextTexture = OFontTexture(gRenderer, gFont);
+		if (!gPromptTextTexture.loadFromRenderedText("Enter Data:", textColor))
+		{
+			printf("Failed to render prompt text!\n");
+			success = false;
+		}
+	}
+
+
+	//Initalize data texturs
+	gDataTextures[0] = OFontTexture(gRenderer, gFont);
+	gDataTextures[0].loadFromRenderedText(std::to_string((_Longlong)gData[0]), highlightColor);
+	for (int i = 1; i < TOTAL_DATA; ++i)
+	{
+		gDataTextures[i] = OFontTexture(gRenderer, gFont);
+		gDataTextures[i].loadFromRenderedText(std::to_string((_Longlong)gData[i]), textColor);
 	}
 	
 
@@ -137,9 +198,32 @@ bool loadMedia()
 
 void close()
 {
+	//Open data for writing
+	SDL_RWops* file = SDL_RWFromFile("33/nums.bin", "w+b");
+	if (file != NULL)
+	{
+		//Save data 
+		for (int i = 0; i < TOTAL_DATA; ++i)
+		{
+			SDL_RWwrite(file, &gData[i], sizeof(Sint32), 1);
+		}
+
+		//Close file handler
+		SDL_RWclose(file);
+	}
+	else
+	{
+		printf("Error: unable to save file! %s\n", SDL_GetError());
+	}
+
+	//Free loaded images
+	for (int i = 0; i < TOTAL_DATA; ++i)
+	{
+		gDataTextures[i].free();
+	}
+
 	//Free loaded images
 	gPromptTextTexture.free();
-	gInputTextTexture.free();
 	TTF_CloseFont(gFont);
 	gFont = NULL;
 	
@@ -154,7 +238,9 @@ void close()
 #ifdef _SDL_TTF_H 
 	TTF_Quit();
 #endif
+#ifdef _SDL_IMAGE_H
 	IMG_Quit();
+#endif
 	SDL_Quit();
 }//end close
 
@@ -182,10 +268,10 @@ int main( int argc, char* args[] )
 
 			//Set text color as black
 			SDL_Color textColor = { 0, 0, 0, 0xFF };
+			SDL_Color highlightColor = { 0xFF, 0, 0, 0xFF };
 
-			//The current input text
-			std::string inputText = "Some Text";
-			gInputTextTexture.loadFromRenderedText(inputText, textColor);
+			//Current input point
+			int currentData = 0;
 
 			//Enable Text Input
 			SDL_StartTextInput();
@@ -210,57 +296,49 @@ int main( int argc, char* args[] )
 					}//end if
 					else if (e.type == SDL_KEYDOWN)
 					{
-						//Handle backspace
-						if (e.key.keysym.sym == SDLK_BACKSPACE && inputText.length() > 0)
+						switch (e.key.keysym.sym)
 						{
-							//lop off character
-							inputText.pop_back();
-							renderText = true;
-						}
-						//Handle copy
-						else if (e.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL)
-						{
-							SDL_SetClipboardText(inputText.c_str());
-						}
-						//Handle paste
-						else if (e.key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL)
-						{
-							inputText = SDL_GetClipboardText();
-							renderText = true;
-						}
-					}//end if else key event
-					//Special text input event
-					else if (e.type == SDL_TEXTINPUT)
-					{
-						//Not copy or paste
-						if (!((e.text.text[0] == 'c' || e.text.text[0] == 'C') &&
-							(e.text.text[0] == 'v' || e.text.text[0] == 'V') &&
-							SDL_GetModState() & KMOD_CTRL))
-						{
-							//Append character
-							inputText += e.text.text;
-							renderText = true;
-						}
-					}
-				}
-					
-					
-				//Render text if needed
-				if (renderText)
-				{
-					//Text is not empty
-					if (inputText != "")
-					{
-						//render new text
-						gInputTextTexture.loadFromRenderedText(inputText.c_str(), textColor);
-					}
-					//Text is empty
-					else
-					{
-						//Render space texture
-						gInputTextTexture.loadFromRenderedText(" ", textColor);
-					}
-				}
+							//Previous data entry
+						case SDLK_UP:
+							//Rerender previous entry input point
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), textColor);
+							--currentData;
+							if (currentData < 0)
+							{
+								currentData = TOTAL_DATA - 1;
+							}
+
+							//Rerender current entry input point
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), highlightColor);
+							break;
+
+							//Next data entry
+						case SDLK_DOWN:
+							//Rerender previous entry input point
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), textColor);
+							++currentData;
+							if (currentData == TOTAL_DATA)
+							{
+								currentData = 0;
+							}
+
+							//Rerender current entry input point
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), highlightColor);
+							break;
+							//Decrement input point
+						case SDLK_LEFT:
+							--gData[currentData];
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), highlightColor);
+							break;
+
+							//Increment input point
+						case SDLK_RIGHT:
+							++gData[currentData];
+							gDataTextures[currentData].loadFromRenderedText(std::to_string((_Longlong)gData[currentData]), highlightColor);
+							break;
+						}//end switch
+					}//end if key down
+				}//end while
 
 					
 
@@ -270,7 +348,10 @@ int main( int argc, char* args[] )
 
 				//Render Textures
 				gPromptTextTexture.render((SCREEN_WIDTH - gPromptTextTexture.getWidth()) / 2, 0);
-				gInputTextTexture.render((SCREEN_WIDTH - gInputTextTexture.getWidth()) / 2, gPromptTextTexture.getHeight());
+				for (int i = 0; i < TOTAL_DATA; ++i)
+				{
+					gDataTextures[i].render((SCREEN_WIDTH - gDataTextures[i].getWidth()) / 2, gPromptTextTexture.getHeight() + gDataTextures[0].getHeight() * i);
+				}
 
 				//Update Screen
 				SDL_RenderPresent(gRenderer);

@@ -10,6 +10,7 @@ class OTexture
 {
 public:
 	//de/contructor
+	OTexture();
 	OTexture(SDL_Renderer* renderer);
 	~OTexture();
 
@@ -39,6 +40,9 @@ public:
 
 	void setWidth(int w);
 	void setHeight(int h);
+
+	void setRenderer(SDL_Renderer* renderer);
+	SDL_Renderer* getRenderer();
 
 protected:
 	//hardware texture

@@ -1,5 +1,7 @@
 #include "OTexture.h"
 
+OTexture::OTexture() {}
+
 OTexture::OTexture(SDL_Renderer* renderer)
 {
 	mRenderer = renderer;
@@ -117,4 +119,14 @@ void OTexture::setWidth(int w)
 void OTexture::setHeight(int h)
 {
 	mHeight = h;
+}
+
+void OTexture::setRenderer(SDL_Renderer* renderer)
+{
+	mRenderer = renderer;
+}
+
+SDL_Renderer* OTexture::getRenderer()
+{
+	return mRenderer;
 }
