@@ -3,13 +3,11 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
-#include <SDL_image.h>
 
 #include <stdio.h>
 #include <string>
 
 #include "OWindow.h"
-#include "OTexture.h"
 
 //The dimensions of the level;
 const int LEVEL_WIDTH = 1280;
@@ -19,14 +17,14 @@ const int LEVEL_HEIGHT = 960;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
+//Total windows
+const int TOTAL_WINDOWS = 3;
+
 //The window we'll be rendering to
-OWindow gWindow;
+OWindow gWindows[TOTAL_WINDOWS];
 
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
-
-//Screen Texture
-OTexture gSceneTexture;
 
 //Starts up SDL and creates a window
 bool init();
@@ -52,53 +50,48 @@ bool init()
 	if (SDL_Init(SDL_INIT_VIDEO /*| SDL_INIT_AUDIO*/) < 0)
 	{
 		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		sucess = false;
 	}//end if
 	else
 	{
-		//Create Window
-		if (!gWindow.init("SDL_Resizable Windows!"))
+		//Set texture filtering to liner
+		if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1"))
 		{
-			printf("Window could not be created! SDL Error: %s\n", SDL_GetError());
+			printf("Warning: Linear texture filtering not enabled!");
+		}
+
+		//Create Window
+		if (!gWindows[0].init("SDL_Resizable Windows!"))
+		{
+			printf("Window could not be created!");
 			sucess = false;
 		}
 		else
 		{
-			//Create renderer for window
-			gRenderer = gWindow.createRenderer();
-			if (gRenderer == NULL)
-			{
-				printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
-				sucess = false;
-			}
-			else
-			{
-				//initalize renderer color
-				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 #ifdef _SDL_IMAGE_H
-				//initialize PNG loading
-				int imageFlags = IMG_INIT_PNG;
-				if (!(IMG_Init(imageFlags)& imageFlags))
-				{
-					printf("SDL_image could not initialize! SDL_Image Error: %s\n", IMG_GetError());
-					sucess = false;
-				}//end image init else
+			//initialize PNG loading
+			int imageFlags = IMG_INIT_PNG;
+			if (!(IMG_Init(imageFlags)& imageFlags))
+			{
+				printf("SDL_image could not initialize! SDL_Image Error: %s\n", IMG_GetError());
+				sucess = false;
+			}//end image init else
 #endif
 #ifdef _SDL_TTF_H
-				 //Initialize SDL_ttf
-				if (TTF_Init() == -1)
-				{
-					printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
-					sucess = false;
-				}
+				//Initialize SDL_ttf
+			if (TTF_Init() == -1)
+			{
+				printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+				sucess = false;
+			}
 #endif
 
-				/*//Initalize SDL_mixer
-				if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
-				{
-					printf("SDL_mixer could not initalize! SDL_mixer Error: %s\n", Mix_GetError());
-					sucess = false;
-				}*/
-			}// end else create renderer
+			/*//Initalize SDL_mixer
+			if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+			{
+				printf("SDL_mixer could not initalize! SDL_mixer Error: %s\n", Mix_GetError());
+				sucess = false;
+			}*/
 		}//end else
 	}//end else
 	return sucess;
@@ -107,16 +100,6 @@ bool init()
 bool loadMedia() 
 {
 	bool success = true;
-
-	
-	//Initalize texture
-	gSceneTexture = OTexture(gRenderer);
-
-	if (!gSceneTexture.loadFromFile("35/window.png"))
-	{
-		printf("Failed to load image from file!\n");
-		success = false;
-	}
 	
 
 	return success;
@@ -124,13 +107,11 @@ bool loadMedia()
 
 void close()
 {
-	
-
-	//Free loaded images
-	gSceneTexture.free();
-
-	//Distory the window and renderer
-	gWindow.free();
+	//Destroy windows
+	for (int i = 0; i < TOTAL_WINDOWS; ++i)
+	{
+		gWindows[i].free();
+	}
 
 	//Quit SDL subsystems
 #ifdef _SDL_TTF_H 
@@ -164,6 +145,12 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
+			//Initialize the rest of the windows
+			for (int i = 1; i < TOTAL_WINDOWS; ++i)
+			{
+				gWindows[i].init(std::string("SDL Window: %d", i));
+			}
+
 			//While application is running
 			while (!quit)
 			{
@@ -181,25 +168,52 @@ int main( int argc, char* args[] )
 					}//end if
 					
 					//Handle window events
-					gWindow.handleEvent(e);
+					for (int i = 0; i < TOTAL_WINDOWS; ++i)
+					{
+						gWindows[i].handleEvent(e);
+					}
+					//Handle window events
+					if (e.type == SDL_KEYDOWN)
+					{
+						switch (e.key.keysym.sym)
+						{
+						case SDLK_1:
+							gWindows[0].focus();
+							break;
+
+						case SDLK_2:
+							gWindows[1].focus();
+							break;
+
+						case SDLK_3:
+							gWindows[2].focus();
+							break;
+						}
+					}
 				}//end while
 
-				//Only draw when not minimized
-				if (!gWindow.isMinimized())
+				//Update all windows
+				for (int i = 0; i < TOTAL_WINDOWS; ++i)
 				{
-					//Clear screen
-					SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-					SDL_RenderClear(gRenderer);
-
-					//Render text texture
-					gSceneTexture.render(
-						(gWindow.getWidth() - gSceneTexture.getWidth()) / 2,
-						(gWindow.getHeight() - gSceneTexture.getHeight()) / 2);
-
-					//Update Screen
-					SDL_RenderPresent(gRenderer);
+					gWindows[i].render();
 				}
 				
+				//Check all windows
+				bool allWindowsClosed = true;
+				for (int i = 0; i < TOTAL_WINDOWS; ++i)
+				{
+					if (gWindows[i].isShown())
+					{
+						allWindowsClosed = false;
+						break;
+					}
+				}
+
+				//Application closed all windows
+				if (allWindowsClosed)
+				{
+					quit = true;
+				}
 			}//end main loop
 		}//end else
 	}//end if

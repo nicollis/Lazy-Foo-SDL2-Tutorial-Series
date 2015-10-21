@@ -27,70 +27,89 @@ bool OWindow::init(std::string windowName, int screenWidth, int screenHeight)
 		mKeyboardFocus = true;
 		mWidth = screenWidth;
 		mHeight = screenHeight;
-	}
 
-	return mWindow != NULL;
-}
-
-SDL_Renderer* OWindow::createRenderer()
-{
-	if (mRenderer == NULL)
-	{
-		mRenderer = SDL_CreateRenderer(mWindow, -1,
+		//Create renderer for window
+		mRenderer = SDL_CreateRenderer(mWindow, -1, 
 			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	}
+		if (mRenderer == NULL)
+		{
+			printf("Renderer could not be created! SDL Error: %s \n", SDL_GetError());
+			SDL_DestroyWindow(mWindow);
+			mWindow = NULL;
+		}
+		else
+		{
+			//Initialize renderer color
+			SDL_SetRenderDrawColor(mRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+
+			//Grab window identifier
+			mWindowID = SDL_GetWindowID(mWindow);
+
+			//Flag as opened
+			mShown = true;
+		}
+	}// if window isnt NULL
 	else
 	{
-		printf("Warning: Renderer already generated!");
-	}
-		
-	return mRenderer;
+		printf("Window could not be created! SDL Error: %s\n", SDL_GetError());
+	}// is window is NULL
+
+	return mWindow != NULL;
 }
 
 void OWindow::handleEvent(SDL_Event& e)
 {
 	//Window event occured
-	if (e.type == SDL_WINDOWEVENT)
+	//If an event is detected for this window
+	if (e.type == SDL_WINDOWEVENT && e.window.windowID == mWindowID)
 	{
 		//Caption update flag
 		bool updateCaption = false;
 		switch (e.window.event)
 		{
-			//Get new dimensions and repaint on wwindow size change
+			//Window appeard
+		case SDL_WINDOWEVENT_SHOWN:
+			mShown = true;
+			break;
+
+			//Window disappeared
+		case SDL_WINDOWEVENT_HIDDEN:
+			mShown = false;
+			break;
+
+			//Get new dimensions and repaint
 		case SDL_WINDOWEVENT_SIZE_CHANGED:
 			mWidth = e.window.data1;
 			mHeight = e.window.data2;
 			SDL_RenderPresent(mRenderer);
 			break;
 
-			//Repaint on exposure
+			//Repaint on expose
 		case SDL_WINDOWEVENT_EXPOSED:
 			SDL_RenderPresent(mRenderer);
 			break;
 
-			//Mouse entered window
+			//Mouse enter
 		case SDL_WINDOWEVENT_ENTER:
-			mMouseFocus = true;
-			updateCaption = true;
-			break;
-
-			//Mouse left window
-		case SDL_WINDOWEVENT_LEAVE:
 			mMouseFocus = false;
 			updateCaption = true;
 			break;
 
-			//Window has keyboard focus
+			//Mouse exit
+		case SDL_WINDOWEVENT_LEAVE:
+			mMouseFocus = false;
+			updateCaption = false;
+			break;
+
+			//Keyboard focus grained
 		case SDL_WINDOWEVENT_FOCUS_GAINED:
 			mKeyboardFocus = true;
 			updateCaption = true;
 			break;
 
-			//Window lost keyboard focus
 		case SDL_WINDOWEVENT_FOCUS_LOST:
 			mKeyboardFocus = false;
 			updateCaption = true;
-			break;
 
 			//Window minimized
 		case SDL_WINDOWEVENT_MINIMIZED:
@@ -106,15 +125,20 @@ void OWindow::handleEvent(SDL_Event& e)
 		case SDL_WINDOWEVENT_RESTORED:
 			mMinimized = false;
 			break;
-		}//end switch
-		 //Update window caption with new data
+
+			//Hide on close
+		case SDL_WINDOWEVENT_CLOSE:
+			SDL_HideWindow(mWindow);
+			break;
+		}
+		//Update window caption with new data
 		if (updateCaption)
 		{
 			std::stringstream caption;
-			caption << "SDL Tutorial - MouseFocus:" << ((mMouseFocus) ? "On" : "Off") << " KeyboardFocus:" << ((mKeyboardFocus) ? "On" : "Off");
+			caption << "SDL Tutorial - ID: " << mWindowID << " MouseFocus:" << ((mMouseFocus) ? "On" : "Off") << " KeyboardFocus:" << ((mKeyboardFocus) ? "On" : "Off");
 			SDL_SetWindowTitle(mWindow, caption.str().c_str());
 		}
-	}//end if window event
+	}//if window event matches window id
 	 //Enter exit full screen on return key
 	else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN)
 	{
@@ -131,6 +155,31 @@ void OWindow::handleEvent(SDL_Event& e)
 		}//end if else full screen
 	}// end else if keydown and return
 }//end methond handle event
+
+void OWindow::focus()
+{
+	//Restore window if needed
+	if (!mShown)
+	{
+		SDL_ShowWindow(mWindow);
+	}
+
+	//Move window forward
+	SDL_RaiseWindow(mWindow);
+}
+
+void OWindow::render()
+{
+	if (!mMinimized)
+	{
+		//Clear screen
+		SDL_SetRenderDrawColor(mRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderClear(mRenderer);
+
+		//Update Screen
+		SDL_RenderPresent(mRenderer);
+	}
+}
 
 void OWindow::free()
 {
@@ -174,4 +223,9 @@ bool OWindow::hasKeyboardFocus()
 bool OWindow::isMinimized()
 {
 	return mMinimized;
+}
+
+bool OWindow::isShown()
+{
+	return mShown;
 }
