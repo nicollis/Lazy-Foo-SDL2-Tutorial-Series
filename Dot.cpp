@@ -1,6 +1,6 @@
 #include "Dot.h"
 
-Dot::Dot(int levelWidth, int levelHeight)
+Dot::Dot(const int levelWidth, const int levelHeight, OTexture* particleTextures, OTexture* shimmer)
 {
 	//Initialize of Offsets
 	mPosX = 0;
@@ -13,6 +13,24 @@ Dot::Dot(int levelWidth, int levelHeight)
 
 	mLevelWidth = levelWidth;
 	mLevelHeight = levelHeight;
+
+	mParticles = particleTextures;
+	mShimmer = shimmer;
+
+	//Initialize particles
+	for (int i = 0; i < TOTAL_PARTICLES; ++i)
+	{
+		particles[i] = new Particle(mPosX, mPosY, mParticles, mShimmer);
+	}
+}
+
+Dot::~Dot()
+{
+	//Delete particles
+	for (int i = 0; i < TOTAL_PARTICLES; ++i)
+	{
+		delete particles[i];
+	}
 }
 
 void Dot::handleEvent(SDL_Event &e)
@@ -69,6 +87,7 @@ void Dot::render(OTexture& dotTexture)
 {
 	//Show the dot
 	dotTexture.render(mPosX, mPosY);
+	renderParticles();
 }//end render method
 
 int Dot::getPosX()
@@ -79,4 +98,24 @@ int Dot::getPosX()
 int Dot::getPosY()
 {
 	return mPosY;
+}
+
+void Dot::renderParticles()
+{
+	//Go though particles
+	for (int i = 0; i < TOTAL_PARTICLES; ++i)
+	{
+		//Delete and replace dead particles
+		if (particles[i]->isDead())
+		{
+			delete particles[i];
+			particles[i] = new Particle(mPosX, mPosY, mParticles, mShimmer);
+		}
+	}
+
+	//Show particles
+	for (int i = 0; i < TOTAL_PARTICLES; ++i)
+	{
+		particles[i]->render();
+	}
 }

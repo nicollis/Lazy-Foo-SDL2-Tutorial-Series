@@ -48,7 +48,7 @@ bool OTexture::loadFromFile(std::string path, SDL_Color colorKey)
 			mHeight = loadedSurface->h;
 		}//end if else newTexture created
 
-		//Get rid of old loaded surface
+		//Get rid of old loaded surface		
 		SDL_FreeSurface(loadedSurface);
 	}//end if else loadedSurface
 
@@ -98,7 +98,10 @@ void OTexture::render(int x, int y, SDL_Rect* clip,
 		renderQuad.h = clip->h;
 	}
 
-	SDL_RenderCopyEx(mRenderer, mTexture, clip, &renderQuad, angle, center, flip);
+	if (SDL_RenderCopyEx(mRenderer, mTexture, clip, &renderQuad, angle, center, flip))
+	{
+		printf("Error rendering texture! SDL Error %s\n", SDL_GetError());
+	}
 }//end render
 
 int OTexture::getWidth()

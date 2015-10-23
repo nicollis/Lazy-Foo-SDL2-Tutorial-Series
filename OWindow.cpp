@@ -19,7 +19,7 @@ bool OWindow::init(std::string windowName, int screenWidth, int screenHeight)
 	mWindow = SDL_CreateWindow(windowName.c_str(),
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		screenWidth, screenHeight,
-		SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+		SDL_WINDOW_SHOWN /*| SDL_WINDOW_RESIZABLE*/);
 
 	if (mWindow != NULL)
 	{
@@ -228,4 +228,9 @@ bool OWindow::isMinimized()
 bool OWindow::isShown()
 {
 	return mShown;
+}
+
+SDL_Renderer* OWindow::getRenderer()
+{
+	return mRenderer;
 }

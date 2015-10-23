@@ -4,7 +4,11 @@
 #include <vector>
 
 #include "OTexture.h"
+#include "Particle.h"
 #include "Util.h"
+
+//Particle count
+const int TOTAL_PARTICLES = 20;
 
 class Dot
 {
@@ -17,7 +21,10 @@ public:
 	static const int DOT_VEL = 10;
 
 	//Initialize the variables
-	Dot(int levelWidth = 1280, int levelHeight = 960);
+	Dot(const int levelWidth, const int levelHeight, OTexture* particleTextures, OTexture* shimmer);
+
+	//Deallocates particles
+	~Dot();
 
 	//Takes key presses and adjusts the dot's velocity
 	void handleEvent(SDL_Event &e);
@@ -33,6 +40,14 @@ public:
 	int getPosY();
 
 private:
+	//The particles
+	Particle* particles[TOTAL_PARTICLES];
+
+	//Show the particles
+	void renderParticles();
+	OTexture* mParticles;
+	OTexture* mShimmer;
+
 	//The X and Y offset of the dot
 	int mPosX, mPosY;
 

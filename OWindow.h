@@ -30,11 +30,14 @@ public:
 	int getWidth();
 	int getHeight();
 
-	//Window focii
+	//Window foci
 	bool hasMouseFocus();
 	bool hasKeyboardFocus();
 	bool isMinimized();
 	bool isShown();
+
+	//Get renderer
+	SDL_Renderer* getRenderer();
 
 private:
 	//Window data

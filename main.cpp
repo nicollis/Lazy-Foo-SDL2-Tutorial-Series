@@ -3,28 +3,32 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
+#include <SDL_image.h>
 
 #include <stdio.h>
 #include <string>
 
 #include "OWindow.h"
-
-//The dimensions of the level;
-const int LEVEL_WIDTH = 1280;
-const int LEVEL_HEIGHT = 960;
+#include "OTexture.h"
+#include "Particle.h"
+#include "Dot.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
-//Total windows
-const int TOTAL_WINDOWS = 3;
-
 //The window we'll be rendering to
-OWindow gWindows[TOTAL_WINDOWS];
+OWindow gWindow;
 
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
+
+//Dot Texture
+OTexture gDotTexture;
+OTexture gRedParticle;
+OTexture gBlueParticle;
+OTexture gGreenParticle;
+OTexture gShimmer;
 
 //Starts up SDL and creates a window
 bool init();
@@ -61,13 +65,14 @@ bool init()
 		}
 
 		//Create Window
-		if (!gWindows[0].init("SDL_Resizable Windows!"))
+		if (!gWindow.init("SDL_Resizable Windows!"))
 		{
 			printf("Window could not be created!");
 			sucess = false;
 		}
 		else
 		{
+			gRenderer = gWindow.getRenderer();
 #ifdef _SDL_IMAGE_H
 			//initialize PNG loading
 			int imageFlags = IMG_INIT_PNG;
@@ -100,18 +105,67 @@ bool init()
 bool loadMedia() 
 {
 	bool success = true;
-	
+
+	gRedParticle.setRenderer(gRenderer);
+	gBlueParticle.setRenderer(gRenderer);
+	gGreenParticle.setRenderer(gRenderer);
+	gShimmer.setRenderer(gRenderer);
+	gDotTexture.setRenderer(gRenderer);
+
+	//Load dot texture
+	if (!gDotTexture.loadFromFile("38_particle_engines/dot.bmp", { 0, 255, 255 }))
+	{
+		printf("Failed to load dot texture!\n");
+		success = false;
+	}
+
+	//Load red texture
+	if (!gRedParticle.loadFromFile("38_particle_engines/red.bmp", { 0, 255, 255 }))
+	{
+		printf("Failed to load red texture!\n");
+		success = false;
+	}
+
+	//Load green texture
+	if (!gGreenParticle.loadFromFile("38_particle_engines/green.bmp", { 0, 255, 255 }))
+	{
+		printf("Failed to load green texture!\n");
+		success = false;
+	}
+
+	//Load blue texture
+	if (!gBlueParticle.loadFromFile("38_particle_engines/blue.bmp", { 0, 255, 255 }))
+	{
+		printf("Failed to load blue texture!\n");
+		success = false;
+	}
+
+	//Load shimmer texture
+	if (!gShimmer.loadFromFile("38_particle_engines/shimmer.bmp", { 0, 255, 255 }))
+	{
+		printf("Failed to load shimmer texture!\n");
+		success = false;
+	}
+
+	//Set texture transparency
+	gRedParticle.setAlpha(192);
+	gGreenParticle.setAlpha(192);
+	gBlueParticle.setAlpha(192);
+	gShimmer.setAlpha(192);
 
 	return success;
 }//end loadMedia
 
 void close()
 {
-	//Destroy windows
-	for (int i = 0; i < TOTAL_WINDOWS; ++i)
-	{
-		gWindows[i].free();
-	}
+	gRedParticle.free();
+	gBlueParticle.free();
+	gGreenParticle.free();
+	gShimmer.free();
+	gDotTexture.free();
+
+	gWindow.free();
+	gRenderer = NULL;
 
 	//Quit SDL subsystems
 #ifdef _SDL_TTF_H 
@@ -145,11 +199,11 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//Initialize the rest of the windows
-			for (int i = 1; i < TOTAL_WINDOWS; ++i)
-			{
-				gWindows[i].init(std::string("SDL Window: %d", i));
-			}
+			//Put particle texturs into array
+			OTexture particleCollection[3] = { gRedParticle,gBlueParticle,gGreenParticle };
+
+			//The dot that will be moving on the screen
+			Dot dot = Dot(SCREEN_WIDTH, SCREEN_HEIGHT, particleCollection, &gShimmer);
 
 			//While application is running
 			while (!quit)
@@ -167,53 +221,22 @@ int main( int argc, char* args[] )
 						quit = true;
 					}//end if
 					
-					//Handle window events
-					for (int i = 0; i < TOTAL_WINDOWS; ++i)
-					{
-						gWindows[i].handleEvent(e);
-					}
-					//Handle window events
-					if (e.type == SDL_KEYDOWN)
-					{
-						switch (e.key.keysym.sym)
-						{
-						case SDLK_1:
-							gWindows[0].focus();
-							break;
-
-						case SDLK_2:
-							gWindows[1].focus();
-							break;
-
-						case SDLK_3:
-							gWindows[2].focus();
-							break;
-						}
-					}
+					//Handle dot events
+					dot.handleEvent(e);
 				}//end while
 
-				//Update all windows
-				for (int i = 0; i < TOTAL_WINDOWS; ++i)
-				{
-					gWindows[i].render();
-				}
-				
-				//Check all windows
-				bool allWindowsClosed = true;
-				for (int i = 0; i < TOTAL_WINDOWS; ++i)
-				{
-					if (gWindows[i].isShown())
-					{
-						allWindowsClosed = false;
-						break;
-					}
-				}
+				//Move the dot
+				dot.move();
 
-				//Application closed all windows
-				if (allWindowsClosed)
-				{
-					quit = true;
-				}
+				//Clear screen
+				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+				SDL_RenderClear(gRenderer);
+
+				//Render objects
+				dot.render(gDotTexture);
+
+				//Update screen
+				SDL_RenderPresent(gRenderer);
 			}//end main loop
 		}//end else
 	}//end if
