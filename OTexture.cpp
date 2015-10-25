@@ -56,6 +56,11 @@ bool OTexture::loadFromFile(std::string path, SDL_Color colorKey)
 	return mTexture != NULL;
 }//end loadFromFile
 
+bool OTexture::textureIsLoaded()
+{
+	return mTexture != NULL;
+}
+
 void OTexture::free()
 {
 	//Free texture if it exist

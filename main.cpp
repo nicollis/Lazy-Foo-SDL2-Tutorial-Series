@@ -9,26 +9,19 @@ and may not be redistributed without written permission.*/
 #include <string>
 
 #include "OWindow.h"
-#include "OTexture.h"
-#include "Particle.h"
 #include "Dot.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+const int LEVEL_WIDTH = 1280;
+const int LEVEL_HEIGHT = 960;
 
 //The window we'll be rendering to
 OWindow gWindow;
 
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
-
-//Dot Texture
-OTexture gDotTexture;
-OTexture gRedParticle;
-OTexture gBlueParticle;
-OTexture gGreenParticle;
-OTexture gShimmer;
 
 //Starts up SDL and creates a window
 bool init();
@@ -65,7 +58,7 @@ bool init()
 		}
 
 		//Create Window
-		if (!gWindow.init("SDL_Resizable Windows!"))
+		if (!gWindow.init("Tile Engine!"))
 		{
 			printf("Window could not be created!");
 			sucess = false;
@@ -106,63 +99,29 @@ bool loadMedia()
 {
 	bool success = true;
 
-	gRedParticle.setRenderer(gRenderer);
-	gBlueParticle.setRenderer(gRenderer);
-	gGreenParticle.setRenderer(gRenderer);
-	gShimmer.setRenderer(gRenderer);
-	gDotTexture.setRenderer(gRenderer);
-
-	//Load dot texture
-	if (!gDotTexture.loadFromFile("38_particle_engines/dot.bmp", { 0, 255, 255 }))
+	//Initalize Dots to be created
+	if (!Dot::init(gRenderer))
 	{
-		printf("Failed to load dot texture!\n");
+		printf("Failed to initalize Dot Objects!\n");
 		success = false;
 	}
 
-	//Load red texture
-	if (!gRedParticle.loadFromFile("38_particle_engines/red.bmp", { 0, 255, 255 }))
+	//Initalize Tiles
+	if (!Tile::init(gRenderer))
 	{
-		printf("Failed to load red texture!\n");
+		printf("Failed to initalize Tile Objects!\n");
 		success = false;
 	}
 
-	//Load green texture
-	if (!gGreenParticle.loadFromFile("38_particle_engines/green.bmp", { 0, 255, 255 }))
-	{
-		printf("Failed to load green texture!\n");
-		success = false;
-	}
-
-	//Load blue texture
-	if (!gBlueParticle.loadFromFile("38_particle_engines/blue.bmp", { 0, 255, 255 }))
-	{
-		printf("Failed to load blue texture!\n");
-		success = false;
-	}
-
-	//Load shimmer texture
-	if (!gShimmer.loadFromFile("38_particle_engines/shimmer.bmp", { 0, 255, 255 }))
-	{
-		printf("Failed to load shimmer texture!\n");
-		success = false;
-	}
-
-	//Set texture transparency
-	gRedParticle.setAlpha(192);
-	gGreenParticle.setAlpha(192);
-	gBlueParticle.setAlpha(192);
-	gShimmer.setAlpha(192);
-
+	
+	
 	return success;
 }//end loadMedia
 
 void close()
 {
-	gRedParticle.free();
-	gBlueParticle.free();
-	gGreenParticle.free();
-	gShimmer.free();
-	gDotTexture.free();
+	Tile::free();
+	Dot::free();
 
 	gWindow.free();
 	gRenderer = NULL;
@@ -199,11 +158,11 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//Put particle texturs into array
-			OTexture particleCollection[3] = { gRedParticle,gBlueParticle,gGreenParticle };
-
 			//The dot that will be moving on the screen
-			Dot dot = Dot(SCREEN_WIDTH, SCREEN_HEIGHT, particleCollection, &gShimmer);
+			Dot dot = Dot(true);
+
+			//Level Camera
+			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 
 			//While application is running
 			while (!quit)
@@ -226,14 +185,20 @@ int main( int argc, char* args[] )
 				}//end while
 
 				//Move the dot
-				dot.move();
+				dot.move(Tile::TileSet);
+				dot.setCamera(camera);
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
 				//Render objects
-				dot.render(gDotTexture);
+				for (int i = 0; i < Tile::TOTAL_TILES; ++i)
+				{
+					Tile::TileSet[i]->render(camera);
+				}
+				
+				dot.render(camera);
 
 				//Update screen
 				SDL_RenderPresent(gRenderer);

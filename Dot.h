@@ -1,11 +1,16 @@
 #pragma once
 
 #include <SDL.h>
-#include <vector>
 
 #include "OTexture.h"
 #include "Particle.h"
 #include "Util.h"
+#include "Tile.h"
+
+extern const int SCREEN_WIDTH;
+extern const int SCREEN_HEIGHT;
+extern const int LEVEL_WIDTH;
+extern const int LEVEL_HEIGHT;
 
 //Particle count
 const int TOTAL_PARTICLES = 20;
@@ -21,39 +26,46 @@ public:
 	static const int DOT_VEL = 10;
 
 	//Initialize the variables
-	Dot(const int levelWidth, const int levelHeight, OTexture* particleTextures, OTexture* shimmer);
+	Dot(bool effects = false);
 
 	//Deallocates particles
 	~Dot();
+
+	//Initalize textures
+	static bool init(SDL_Renderer *renderer);
+
+	//Free static members
+	static void free();
 
 	//Takes key presses and adjusts the dot's velocity
 	void handleEvent(SDL_Event &e);
 
 	//Moves the dot
-	void move();
+	void move(Tile *tiles[]);
+
+	//Centers the camera on the dot
+	void setCamera(SDL_Rect &camera);
 
 	//Shows the dot on the screen
-	void render(OTexture& dotTexture);
+	void render(SDL_Rect &camera);
 
 	//Position accessors
 	int getPosX();
 	int getPosY();
 
 private:
+	//Collision detection
+	SDL_Rect mBox;
+
 	//The particles
 	Particle* particles[TOTAL_PARTICLES];
 
 	//Show the particles
+	bool mShowParticles;
 	void renderParticles();
-	OTexture* mParticles;
-	OTexture* mShimmer;
-
-	//The X and Y offset of the dot
-	int mPosX, mPosY;
 
 	//The velocity of the dot
 	int mVelX, mVelY;
 
-	//Screen size to keep dot in box
-	int mLevelWidth, mLevelHeight;
+	static OTexture sDotTexture;
 };

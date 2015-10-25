@@ -17,6 +17,9 @@ public:
 	//Load image at specified path, with color key for transparency
 	bool loadFromFile(std::string path, SDL_Color colorKey = { 0xFF, 0xFF, 0xFF });
 
+	//Returns true if texture has been loaded
+	bool textureIsLoaded();
+
 	//Deaccocates Texture
 	void free();
 
@@ -46,8 +49,8 @@ public:
 
 protected:
 	//hardware texture
-	SDL_Texture* mTexture;
-	SDL_Renderer* mRenderer;
+	SDL_Texture* mTexture = NULL;
+	SDL_Renderer* mRenderer = NULL;
 
 private:
 	//Image dimensions
