@@ -10,6 +10,7 @@ and may not be redistributed without written permission.*/
 
 #include "OWindow.h"
 #include "Dot.h"
+#include "OTexture.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -22,6 +23,9 @@ OWindow gWindow;
 
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
+
+//Texture
+OTexture gFooTexture;
 
 //Starts up SDL and creates a window
 bool init();
@@ -99,29 +103,52 @@ bool loadMedia()
 {
 	bool success = true;
 
-	//Initalize Dots to be created
-	if (!Dot::init(gRenderer))
+	gFooTexture.setRenderer(gRenderer);
+
+	//Load foo's texture
+	if (!gFooTexture.loadEditableFromFile("40_texture_manipulation/foo.png", gWindow.getWindow()))
 	{
-		printf("Failed to initalize Dot Objects!\n");
+		printf("Failed to load texture!\n");
 		success = false;
 	}
-
-	//Initalize Tiles
-	if (!Tile::init(gRenderer))
+	else
 	{
-		printf("Failed to initalize Tile Objects!\n");
-		success = false;
-	}
+		//Lock texture
+		if (!gFooTexture.lockTexture())
+		{
+			printf("Unable to lock foo' texture!\n");
+		}
+		//Manual color key
+		else
+		{
+			//Get Pixel data
+			Uint32* pixels = (Uint32*)gFooTexture.getPixels();
+			int pixelCount = (gFooTexture.getPitch() / 4) * gFooTexture.getHeight();
 
-	
+			//Map colors
+			Uint32 colorKey = SDL_MapRGB(SDL_GetWindowSurface(gWindow.getWindow())->format, 0, 0xFF, 0xFF);
+			Uint32 transparent = SDL_MapRGBA(SDL_GetWindowSurface(gWindow.getWindow())->format, 0xFF, 0xFF, 0xFF, 0x00);
+
+			//Color key pixel
+			for (int i = 0; i < pixelCount; ++i)
+			{
+				if (pixels[i] == colorKey)
+				{
+					pixels[i] = transparent;
+				}
+			}
+
+			//Unlock the texture
+			gFooTexture.unlockTexture();
+		}
+	}
 	
 	return success;
 }//end loadMedia
 
 void close()
 {
-	Tile::free();
-	Dot::free();
+	gFooTexture.free();
 
 	gWindow.free();
 	gRenderer = NULL;
@@ -158,11 +185,7 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//The dot that will be moving on the screen
-			Dot dot = Dot(true);
-
-			//Level Camera
-			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+			
 
 			//While application is running
 			while (!quit)
@@ -180,25 +203,15 @@ int main( int argc, char* args[] )
 						quit = true;
 					}//end if
 					
-					//Handle dot events
-					dot.handleEvent(e);
+					
 				}//end while
-
-				//Move the dot
-				dot.move(Tile::TileSet);
-				dot.setCamera(camera);
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				//Render objects
-				for (int i = 0; i < Tile::TOTAL_TILES; ++i)
-				{
-					Tile::TileSet[i]->render(camera);
-				}
-				
-				dot.render(camera);
+				//Render objects on screen
+				gFooTexture.render(0,0);
 
 				//Update screen
 				SDL_RenderPresent(gRenderer);

@@ -62,7 +62,7 @@ private:
 
 	//Show the particles
 	bool mShowParticles;
-	void renderParticles();
+	void renderParticles(SDL_Rect &camera);
 
 	//The velocity of the dot
 	int mVelX, mVelY;

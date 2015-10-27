@@ -15,7 +15,10 @@ public:
 	~OTexture();
 
 	//Load image at specified path, with color key for transparency
-	bool loadFromFile(std::string path, SDL_Color colorKey = { 0xFF, 0xFF, 0xFF });
+	bool loadFromFile(std::string path, SDL_Color* colorKey = NULL);
+
+	//Load editable texture at specified point
+	bool loadEditableFromFile(std::string path, SDL_Window* window);
 
 	//Returns true if texture has been loaded
 	bool textureIsLoaded();
@@ -47,12 +50,24 @@ public:
 	void setRenderer(SDL_Renderer* renderer);
 	SDL_Renderer* getRenderer();
 
+	//Pixel Manipulators
+	bool lockTexture();
+	bool unlockTexture();
+	void* getPixels();
+	int getPitch();
+	bool isEditable();
+
 protected:
 	//hardware texture
 	SDL_Texture* mTexture = NULL;
 	SDL_Renderer* mRenderer = NULL;
 
 private:
+	//The actual hardware texture
+	void* mPixels;
+	int mPitch;
+	bool mEditabled;
+
 	//Image dimensions
 	int mHeight;
 	int mWidth;

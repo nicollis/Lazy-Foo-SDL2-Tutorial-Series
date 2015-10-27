@@ -47,7 +47,7 @@ bool Dot::init(SDL_Renderer *renderer)
 		sDotTexture.setRenderer(renderer);
 
 		//Load dot texture
-		if (!sDotTexture.loadFromFile("38_particle_engines/dot.bmp", { 0, 255, 255 }))
+		if (!sDotTexture.loadFromFile("38_particle_engines/dot.bmp"))
 		{
 			printf("Failed to load dot texture!\n");
 			success = false;
@@ -163,7 +163,7 @@ void Dot::render(SDL_Rect &camera)
 {
 	//Show the dot
 	sDotTexture.render(mBox.x - camera.x, mBox.y - camera.y);
-	if (mShowParticles) { renderParticles(); }
+	if (mShowParticles) { renderParticles(camera); }
 }//end render method
 
 int Dot::getPosX()
@@ -176,7 +176,7 @@ int Dot::getPosY()
 	return mBox.y;
 }
 
-void Dot::renderParticles()
+void Dot::renderParticles(SDL_Rect &camera)
 {
 	//Go though particles
 	for (int i = 0; i < TOTAL_PARTICLES; ++i)
@@ -185,7 +185,7 @@ void Dot::renderParticles()
 		if (particles[i]->isDead())
 		{
 			delete particles[i];
-			particles[i] = new Particle(mBox.x, mBox.y);
+			particles[i] = new Particle(mBox.x - camera.x, mBox.y - camera.y);
 		}
 	}
 

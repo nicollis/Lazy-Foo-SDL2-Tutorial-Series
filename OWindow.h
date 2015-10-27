@@ -36,8 +36,9 @@ public:
 	bool isMinimized();
 	bool isShown();
 
-	//Get renderer
+	//Getters
 	SDL_Renderer* getRenderer();
+	SDL_Window* getWindow();
 
 private:
 	//Window data

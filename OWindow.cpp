@@ -234,3 +234,8 @@ SDL_Renderer* OWindow::getRenderer()
 {
 	return mRenderer;
 }
+
+SDL_Window* OWindow::getWindow()
+{
+	return mWindow;
+}
