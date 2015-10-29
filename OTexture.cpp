@@ -63,7 +63,7 @@ bool OTexture::loadFromFile(std::string path, SDL_Color* colorKey)
 	return mTexture != NULL;
 }//end loadFromFile
 
-bool OTexture::loadEditableFromFile(std::string path, SDL_Window* window)
+bool OTexture::loadEditableFromFile(std::string path, SDL_Color *colorKey)
 {
 	//Get rid of preexisting texture
 	free();
@@ -82,7 +82,7 @@ bool OTexture::loadEditableFromFile(std::string path, SDL_Window* window)
 	else
 	{
 		//Convert surface to display format
-		SDL_Surface* formattedSurface = SDL_ConvertSurface(loadedSurface, SDL_GetWindowSurface(window)->format, NULL);
+		SDL_Surface* formattedSurface = SDL_ConvertSurfaceFormat(loadedSurface, SDL_PIXELFORMAT_RGBA8888, NULL);
 		if (formattedSurface == NULL)
 		{
 			printf("Unable to convert loaded surface to display format! SDL Error: %s\n", SDL_GetError());
@@ -90,7 +90,7 @@ bool OTexture::loadEditableFromFile(std::string path, SDL_Window* window)
 		else
 		{
 			//Create blank streamable texture
-			newTexture = SDL_CreateTexture(mRenderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING, formattedSurface->w, formattedSurface->h);
+			newTexture = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, formattedSurface->w, formattedSurface->h);
 			if (newTexture == NULL)
 			{
 				printf("Unable to create blank texture! SDL Error: %s\n", SDL_GetError());
@@ -103,13 +103,36 @@ bool OTexture::loadEditableFromFile(std::string path, SDL_Window* window)
 				//Copy loaded/formatted surface pixels
 				memcpy(mPixels, formattedSurface->pixels, formattedSurface->pitch * formattedSurface->h);
 
-				//Unlock texture to update
-				SDL_UnlockTexture(newTexture);
-				mPixels = NULL;
-
 				//Get image dimensions
 				mWidth = formattedSurface->w;
 				mHeight = formattedSurface->h;
+
+				//Remove background
+				if (colorKey != NULL)
+				{
+					//Get pixel data in editable format
+					Uint32* pixels = (Uint32*)mPixels;
+					int pixelCount = (mPitch / 4) * mHeight;
+
+					//Map colors
+					Uint32 tColorKey = SDL_MapRGB(formattedSurface->format,
+						colorKey->r, colorKey->g, colorKey->b);
+					Uint32 transparent = SDL_MapRGBA(formattedSurface->format,
+						0xFF, 0xFF, 0xFF, 0x00);
+
+					//Color key pixels
+					for (int i = 0; i < pixelCount; ++i)
+					{
+						if (pixels[i] == tColorKey)
+						{
+							pixels[i] = transparent;
+						}
+					}
+				}
+
+				//Unlock texture to update
+				SDL_UnlockTexture(newTexture);
+				mPixels = NULL;
 			}
 
 			//Get rid of old formatted surface
@@ -127,6 +150,27 @@ bool OTexture::loadEditableFromFile(std::string path, SDL_Window* window)
 
 bool OTexture::textureIsLoaded()
 {
+	return mTexture != NULL;
+}
+
+bool OTexture::createBlank(int width, int height)
+{
+	//Texture is editable
+	mEditabled = true;
+
+	//Create uninitalized texures
+	mTexture = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_RGBA8888,
+		SDL_TEXTUREACCESS_STREAMING, width, height);
+	if (mTexture == NULL)
+	{
+		printf("Unable to create blank texture! SDL Error: %s\n", SDL_GetError());
+	}
+	else
+	{
+		mWidth = width;
+		mHeight = height;
+	}
+
 	return mTexture != NULL;
 }
 
@@ -268,9 +312,28 @@ void* OTexture::getPixels()
 	return mPixels;
 }
 
+void OTexture::copyPixels(void* pixels)
+{
+	//Texture is locked
+	if (mPixels != NULL)
+	{
+		//Copy to locked pixels
+		memcpy(mPixels, pixels, mPitch * mHeight);
+	}
+}
+
 int OTexture::getPitch()
 {
 	return mPitch;
+}
+
+Uint32 OTexture::getPixel32(unsigned int x, unsigned int y)
+{
+	//Convert the pixels to 32bit
+	Uint32 *pixels = (Uint32*)mPixels;
+
+	//Get the pixel requested
+	return pixels[(y * (mPitch / 4)) + x];
 }
 
 bool OTexture::isEditable()

@@ -18,10 +18,13 @@ public:
 	bool loadFromFile(std::string path, SDL_Color* colorKey = NULL);
 
 	//Load editable texture at specified point
-	bool loadEditableFromFile(std::string path, SDL_Window* window);
+	bool loadEditableFromFile(std::string path, SDL_Color* colorKey = NULL);
 
 	//Returns true if texture has been loaded
 	bool textureIsLoaded();
+
+	//Creates blank texture
+	bool createBlank(int width, int height);
 
 	//Deaccocates Texture
 	void free();
@@ -54,7 +57,9 @@ public:
 	bool lockTexture();
 	bool unlockTexture();
 	void* getPixels();
+	void copyPixels(void* pixels);
 	int getPitch();
+	Uint32 getPixel32(unsigned int x, unsigned int y);
 	bool isEditable();
 
 protected:

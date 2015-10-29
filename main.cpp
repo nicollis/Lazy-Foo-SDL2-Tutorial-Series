@@ -11,21 +11,20 @@ and may not be redistributed without written permission.*/
 #include "OWindow.h"
 #include "Dot.h"
 #include "OTexture.h"
+#include "DataStream.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
-const int LEVEL_WIDTH = 1280;
-const int LEVEL_HEIGHT = 960;
+const int LEVEL_WIDTH = 640;
+const int LEVEL_HEIGHT = 480;
 
 //The window we'll be rendering to
 OWindow gWindow;
 
-//The window renderer
-SDL_Renderer* gRenderer = NULL;
-
 //Texture
-OTexture gFooTexture;
+OTexture gStreamingTexture;
+DataStream gDataStream;
 
 //Starts up SDL and creates a window
 bool init();
@@ -69,7 +68,7 @@ bool init()
 		}
 		else
 		{
-			gRenderer = gWindow.getRenderer();
+			
 #ifdef _SDL_IMAGE_H
 			//initialize PNG loading
 			int imageFlags = IMG_INIT_PNG;
@@ -103,44 +102,20 @@ bool loadMedia()
 {
 	bool success = true;
 
-	gFooTexture.setRenderer(gRenderer);
+	gStreamingTexture.setRenderer(gWindow.getRenderer());
 
-	//Load foo's texture
-	if (!gFooTexture.loadEditableFromFile("40_texture_manipulation/foo.png", gWindow.getWindow()))
+	//Load blank texture
+	if (!gStreamingTexture.createBlank(64, 205))
 	{
-		printf("Failed to load texture!\n");
+		printf("Failed to create streaming texture!\n");
 		success = false;
 	}
-	else
+
+	//Load data stream
+	if (!gDataStream.loadMedia())
 	{
-		//Lock texture
-		if (!gFooTexture.lockTexture())
-		{
-			printf("Unable to lock foo' texture!\n");
-		}
-		//Manual color key
-		else
-		{
-			//Get Pixel data
-			Uint32* pixels = (Uint32*)gFooTexture.getPixels();
-			int pixelCount = (gFooTexture.getPitch() / 4) * gFooTexture.getHeight();
-
-			//Map colors
-			Uint32 colorKey = SDL_MapRGB(SDL_GetWindowSurface(gWindow.getWindow())->format, 0, 0xFF, 0xFF);
-			Uint32 transparent = SDL_MapRGBA(SDL_GetWindowSurface(gWindow.getWindow())->format, 0xFF, 0xFF, 0xFF, 0x00);
-
-			//Color key pixel
-			for (int i = 0; i < pixelCount; ++i)
-			{
-				if (pixels[i] == colorKey)
-				{
-					pixels[i] = transparent;
-				}
-			}
-
-			//Unlock the texture
-			gFooTexture.unlockTexture();
-		}
+		printf("Unable to load data stream!\n");
+		success = false;
 	}
 	
 	return success;
@@ -148,10 +123,10 @@ bool loadMedia()
 
 void close()
 {
-	gFooTexture.free();
+	gStreamingTexture.free();
+	gDataStream.free();
 
 	gWindow.free();
-	gRenderer = NULL;
 
 	//Quit SDL subsystems
 #ifdef _SDL_TTF_H 
@@ -185,15 +160,9 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			
-
 			//While application is running
 			while (!quit)
 			{
-
-				//Render text flag
-				bool renderText = false;
-
 				//Handle events on queue
 				while (SDL_PollEvent(&e) != 0)
 				{
@@ -207,14 +176,20 @@ int main( int argc, char* args[] )
 				}//end while
 
 				//Clear screen
-				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-				SDL_RenderClear(gRenderer);
+				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
+				SDL_RenderClear(gWindow.getRenderer());
 
-				//Render objects on screen
-				gFooTexture.render(0,0);
+				//Copy frame from buffer
+				gStreamingTexture.lockTexture();
+				gStreamingTexture.copyPixels(gDataStream.getBuffer());
+				gStreamingTexture.unlockTexture();
+
+				//Render Frame
+				gStreamingTexture.render((SCREEN_WIDTH - gStreamingTexture.getWidth()) / 2, 
+					(SCREEN_HEIGHT - gStreamingTexture.getHeight()) / 2);
 
 				//Update screen
-				SDL_RenderPresent(gRenderer);
+				SDL_RenderPresent(gWindow.getRenderer());
 			}//end main loop
 		}//end else
 	}//end if
