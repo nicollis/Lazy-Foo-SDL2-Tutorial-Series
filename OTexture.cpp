@@ -153,14 +153,14 @@ bool OTexture::textureIsLoaded()
 	return mTexture != NULL;
 }
 
-bool OTexture::createBlank(int width, int height)
+bool OTexture::createBlank(int width, int height, SDL_TextureAccess access)
 {
 	//Texture is editable
 	mEditabled = true;
 
 	//Create uninitalized texures
 	mTexture = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_RGBA8888,
-		SDL_TEXTUREACCESS_STREAMING, width, height);
+		access, width, height);
 	if (mTexture == NULL)
 	{
 		printf("Unable to create blank texture! SDL Error: %s\n", SDL_GetError());
@@ -221,6 +221,12 @@ void OTexture::render(int x, int y, SDL_Rect* clip,
 		printf("Error rendering texture! SDL Error %s\n", SDL_GetError());
 	}
 }//end render
+
+void OTexture::setAsRenderTarget()
+{
+	//Make self render target
+	SDL_SetRenderTarget(mRenderer, mTexture);
+}
 
 int OTexture::getWidth()
 {

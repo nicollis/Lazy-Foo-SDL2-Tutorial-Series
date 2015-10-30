@@ -23,8 +23,7 @@ const int LEVEL_HEIGHT = 480;
 OWindow gWindow;
 
 //Texture
-OTexture gStreamingTexture;
-DataStream gDataStream;
+OTexture gTargetTexture;
 
 //Starts up SDL and creates a window
 bool init();
@@ -102,19 +101,12 @@ bool loadMedia()
 {
 	bool success = true;
 
-	gStreamingTexture.setRenderer(gWindow.getRenderer());
+	gTargetTexture.setRenderer(gWindow.getRenderer());
 
 	//Load blank texture
-	if (!gStreamingTexture.createBlank(64, 205))
+	if (!gTargetTexture.createBlank(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_TEXTUREACCESS_TARGET))
 	{
-		printf("Failed to create streaming texture!\n");
-		success = false;
-	}
-
-	//Load data stream
-	if (!gDataStream.loadMedia())
-	{
-		printf("Unable to load data stream!\n");
+		printf("Failed to create texture!\n");
 		success = false;
 	}
 	
@@ -123,8 +115,7 @@ bool loadMedia()
 
 void close()
 {
-	gStreamingTexture.free();
-	gDataStream.free();
+	gTargetTexture.free();
 
 	gWindow.free();
 
@@ -160,6 +151,10 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
+			//Rotation variables
+			double angle = 0;
+			SDL_Point screenCenter = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+
 			//While application is running
 			while (!quit)
 			{
@@ -175,18 +170,46 @@ int main( int argc, char* args[] )
 					
 				}//end while
 
+				//rotate
+				angle += 2;
+				if (angle > 360)
+				{
+					angle -= 360;
+				}
+
+				//Set self as render target
+				gTargetTexture.setAsRenderTarget();
+
 				//Clear screen
 				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gWindow.getRenderer());
 
-				//Copy frame from buffer
-				gStreamingTexture.lockTexture();
-				gStreamingTexture.copyPixels(gDataStream.getBuffer());
-				gStreamingTexture.unlockTexture();
+				//Render red filled quad
+				SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+				SDL_SetRenderDrawColor(gWindow.getRenderer() , 0xFF, 0x00, 0x00, 0xFF);
+				SDL_RenderFillRect(gWindow.getRenderer(), &fillRect);
 
-				//Render Frame
-				gStreamingTexture.render((SCREEN_WIDTH - gStreamingTexture.getWidth()) / 2, 
-					(SCREEN_HEIGHT - gStreamingTexture.getHeight()) / 2);
+				//Render green outlined quad
+				SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
+				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0x00, 0xFF, 0x00, 0xFF);
+				SDL_RenderDrawRect(gWindow.getRenderer(), &outlineRect);
+
+				//Draw blue horizontal line
+				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0x00, 0x00, 0xFF, 0xFF);
+				SDL_RenderDrawLine(gWindow.getRenderer(), 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+				//Draw vertical line of yellow dots
+				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0x00, 0xFF);
+				for (int i = 0; i < SCREEN_HEIGHT; i += 4)
+				{
+					SDL_RenderDrawPoint(gWindow.getRenderer(), SCREEN_WIDTH / 2, i);
+				}
+
+				//Reset render target
+				SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
+
+				//Show rendered to texture 
+				gTargetTexture.render(0, 0, NULL, angle, &screenCenter);
 
 				//Update screen
 				SDL_RenderPresent(gWindow.getRenderer());

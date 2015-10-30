@@ -24,7 +24,7 @@ public:
 	bool textureIsLoaded();
 
 	//Creates blank texture
-	bool createBlank(int width, int height);
+	bool createBlank(int width, int height, SDL_TextureAccess = SDL_TEXTUREACCESS_STREAMING);
 
 	//Deaccocates Texture
 	void free();
@@ -42,6 +42,9 @@ public:
 	void render(int x, int y, SDL_Rect* clip = NULL, 
 		double angle = 0.0, SDL_Point* center = NULL, 
 		SDL_RendererFlip flip = SDL_FLIP_NONE);
+
+	//Set self as render target
+	void setAsRenderTarget();
 
 	//Get image dimensions
 	int getWidth();
