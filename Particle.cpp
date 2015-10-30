@@ -22,6 +22,9 @@ Particle::Particle(int x, int y)
 bool Particle::init(SDL_Renderer *renderer)
 {
 	bool success = true;
+
+	SDL_Color colorKey = { 0x00, 0xFF, 0xFF };
+
 	if (!sRedParticle.textureIsLoaded())
 	{
 		sRedParticle.setRenderer(renderer);
@@ -30,28 +33,28 @@ bool Particle::init(SDL_Renderer *renderer)
 		sShimmer.setRenderer(renderer);
 
 		//Load red texture
-		if (!sRedParticle.loadFromFile("38_particle_engines/red.bmp"))
+		if (!sRedParticle.loadFromFile("38_particle_engines/red.bmp", &colorKey))
 		{
 			printf("Failed to load red texture!\n");
 			success = false;
 		}
 
 		//Load green texture
-		if (!sGreenParticle.loadFromFile("38_particle_engines/green.bmp"))
+		if (!sGreenParticle.loadFromFile("38_particle_engines/green.bmp", &colorKey))
 		{
 			printf("Failed to load green texture!\n");
 			success = false;
 		}
 
 		//Load blue texture
-		if (!sBlueParticle.loadFromFile("38_particle_engines/blue.bmp"))
+		if (!sBlueParticle.loadFromFile("38_particle_engines/blue.bmp", &colorKey))
 		{
 			printf("Failed to load blue texture!\n");
 			success = false;
 		}
 
 		//Load shimmer texture
-		if (!sShimmer.loadFromFile("38_particle_engines/shimmer.bmp"))
+		if (!sShimmer.loadFromFile("38_particle_engines/shimmer.bmp", &colorKey))
 		{
 			printf("Failed to load shimmer texture!\n");
 			success = false;

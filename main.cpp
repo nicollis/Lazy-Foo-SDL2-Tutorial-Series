@@ -11,7 +11,7 @@ and may not be redistributed without written permission.*/
 #include "OWindow.h"
 #include "Dot.h"
 #include "OTexture.h"
-#include "DataStream.h"
+#include "OTimer.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -21,9 +21,6 @@ const int LEVEL_HEIGHT = 480;
 
 //The window we'll be rendering to
 OWindow gWindow;
-
-//Texture
-OTexture gTargetTexture;
 
 //Starts up SDL and creates a window
 bool init();
@@ -101,12 +98,9 @@ bool loadMedia()
 {
 	bool success = true;
 
-	gTargetTexture.setRenderer(gWindow.getRenderer());
-
-	//Load blank texture
-	if (!gTargetTexture.createBlank(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_TEXTUREACCESS_TARGET))
+	if (!Dot::init(gWindow.getRenderer()))
 	{
-		printf("Failed to create texture!\n");
+		printf("Issue initalizing Dot!\n");
 		success = false;
 	}
 	
@@ -115,7 +109,7 @@ bool loadMedia()
 
 void close()
 {
-	gTargetTexture.free();
+	Dot::free();
 
 	gWindow.free();
 
@@ -151,9 +145,10 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//Rotation variables
-			double angle = 0;
-			SDL_Point screenCenter = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+			Dot dot(true);
+
+			//Keeps track of the time between steps
+			OTimer stepTimer;
 
 			//While application is running
 			while (!quit)
@@ -167,49 +162,24 @@ int main( int argc, char* args[] )
 						quit = true;
 					}//end if
 					
-					
+					dot.handleEvent(e);
 				}//end while
 
-				//rotate
-				angle += 2;
-				if (angle > 360)
-				{
-					angle -= 360;
-				}
+				//Calucate time step
+				float timeStep = stepTimer.getTicks() / 1000.f;
 
-				//Set self as render target
-				gTargetTexture.setAsRenderTarget();
+				//Move for time step
+				dot.move(timeStep);
 
+				//Reset the timer
+				stepTimer.start();
+				
 				//Clear screen
 				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gWindow.getRenderer());
 
-				//Render red filled quad
-				SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-				SDL_SetRenderDrawColor(gWindow.getRenderer() , 0xFF, 0x00, 0x00, 0xFF);
-				SDL_RenderFillRect(gWindow.getRenderer(), &fillRect);
-
-				//Render green outlined quad
-				SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
-				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0x00, 0xFF, 0x00, 0xFF);
-				SDL_RenderDrawRect(gWindow.getRenderer(), &outlineRect);
-
-				//Draw blue horizontal line
-				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0x00, 0x00, 0xFF, 0xFF);
-				SDL_RenderDrawLine(gWindow.getRenderer(), 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
-
-				//Draw vertical line of yellow dots
-				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0x00, 0xFF);
-				for (int i = 0; i < SCREEN_HEIGHT; i += 4)
-				{
-					SDL_RenderDrawPoint(gWindow.getRenderer(), SCREEN_WIDTH / 2, i);
-				}
-
-				//Reset render target
-				SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
-
-				//Show rendered to texture 
-				gTargetTexture.render(0, 0, NULL, angle, &screenCenter);
+				//Render  Dot
+				dot.render();
 
 				//Update screen
 				SDL_RenderPresent(gWindow.getRenderer());

@@ -23,7 +23,7 @@ public:
 	static const int DOT_HEIGHT = 20;
 
 	//Maximum axis velocity of the dot
-	static const int DOT_VEL = 10;
+	static const int DOT_VEL = 640;
 
 	//Initialize the variables
 	Dot(bool effects = false);
@@ -41,17 +41,20 @@ public:
 	void handleEvent(SDL_Event &e);
 
 	//Moves the dot
-	void move(Tile *tiles[]);
+	void move(float timeStamp);
 
 	//Centers the camera on the dot
 	void setCamera(SDL_Rect &camera);
 
 	//Shows the dot on the screen
+	void render();
+
+	//Shows the dot on the screen
 	void render(SDL_Rect &camera);
 
 	//Position accessors
-	int getPosX();
-	int getPosY();
+	float getPosX();
+	float getPosY();
 
 private:
 	//Collision detection
@@ -62,10 +65,10 @@ private:
 
 	//Show the particles
 	bool mShowParticles;
-	void renderParticles(SDL_Rect &camera);
+	void renderParticles();
 
 	//The velocity of the dot
-	int mVelX, mVelY;
+	float mVelX, mVelY;
 
 	static OTexture sDotTexture;
 };

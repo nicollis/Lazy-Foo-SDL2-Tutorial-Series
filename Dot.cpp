@@ -42,12 +42,14 @@ bool Dot::init(SDL_Renderer *renderer)
 {
 	bool success = true;
 
+	SDL_Color colorKey = { 0x00, 0xFF, 0xFF };
+
 	if (!sDotTexture.textureIsLoaded())
 	{
 		sDotTexture.setRenderer(renderer);
 
 		//Load dot texture
-		if (!sDotTexture.loadFromFile("38_particle_engines/dot.bmp"))
+		if (!sDotTexture.loadFromFile("38_particle_engines/dot.bmp", &colorKey))
 		{
 			printf("Failed to load dot texture!\n");
 			success = false;
@@ -109,28 +111,32 @@ void Dot::handleEvent(SDL_Event &e)
 	}//end else if key up
 }//end handle event method
 
-void Dot::move(Tile *tiles[])
+void Dot::move(float timeStamp)
 {
 	//Move the dot left or right
-	mBox.x += mVelX;
+	mBox.x += mVelX * timeStamp;
 
-	//If the dot went to far to the left or right
-	if ((mBox.x < 0) || (mBox.x + DOT_WIDTH > LEVEL_WIDTH) || 
-		Tile::checkWallCollision(mBox, tiles))
+	//If the dot went too far to the left or right
+	if (mBox.x < 0)
 	{
-		//Move back
-		mBox.x -= mVelX;
+		mBox.x = 0;
+	}
+	else if (mBox.x > SCREEN_WIDTH - DOT_WIDTH)
+	{
+		mBox.x = SCREEN_WIDTH - DOT_WIDTH;
 	}
 
 	//Move the dot up or down
-	mBox.y += mVelY;
+	mBox.y += mVelY * timeStamp;
 
-	//If the dot went to far to up or down
-	if ((mBox.y < 0) || (mBox.y + DOT_HEIGHT > LEVEL_HEIGHT) ||
-		Tile::checkWallCollision(mBox, tiles))
+	//If the dot went too far up or down
+	if (mBox.y < 0)
 	{
-		//Move back
-		mBox.y -= mVelY;
+		mBox.y = 0;
+	}
+	else if (mBox.y > SCREEN_HEIGHT - DOT_HEIGHT)
+	{
+		mBox.y = SCREEN_HEIGHT - DOT_HEIGHT;
 	}
 }// end move method 
 
@@ -159,24 +165,31 @@ void Dot::setCamera(SDL_Rect &camera)
 	}
 }
 
+void Dot::render()
+{
+	//Show the dot
+	sDotTexture.render(mBox.x, mBox.y);
+	if (mShowParticles) { renderParticles(); }
+}//end render method
+
 void Dot::render(SDL_Rect &camera)
 {
 	//Show the dot
 	sDotTexture.render(mBox.x - camera.x, mBox.y - camera.y);
-	if (mShowParticles) { renderParticles(camera); }
+	if (mShowParticles) { renderParticles(); }
 }//end render method
 
-int Dot::getPosX()
+float Dot::getPosX()
 {
 	return mBox.x;
 }
 
-int Dot::getPosY()
+float Dot::getPosY()
 {
 	return mBox.y;
 }
 
-void Dot::renderParticles(SDL_Rect &camera)
+void Dot::renderParticles()
 {
 	//Go though particles
 	for (int i = 0; i < TOTAL_PARTICLES; ++i)
@@ -185,7 +198,7 @@ void Dot::renderParticles(SDL_Rect &camera)
 		if (particles[i]->isDead())
 		{
 			delete particles[i];
-			particles[i] = new Particle(mBox.x - camera.x, mBox.y - camera.y);
+			particles[i] = new Particle(mBox.x, mBox.y);
 		}
 	}
 
