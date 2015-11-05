@@ -11,7 +11,6 @@ and may not be redistributed without written permission.*/
 #include "OWindow.h"
 #include "Dot.h"
 #include "OTexture.h"
-#include "OTimer.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -21,6 +20,11 @@ const int LEVEL_HEIGHT = 480;
 
 //The window we'll be rendering to
 OWindow gWindow;
+
+//Test our callback function
+Uint32 callback(Uint32 interval, void* param);
+
+OTexture gSplashScreenTexture;
 
 //Starts up SDL and creates a window
 bool init();
@@ -37,13 +41,21 @@ SDL_Surface* loadSurface(std::string path);
 //Loads individual image as texture
 SDL_Texture* loadTexture(std::string path);
 
+Uint32 callback(Uint32 interval, void* param)
+{
+	//print callback message
+	printf("Callback called back with message: %s\n", (char*)param);
+
+	return 0;
+}
+
 bool init()
 {
 	//Initialization flag;
 	bool sucess = true;
 
 	//Initalize SDL
-	if (SDL_Init(SDL_INIT_VIDEO /*| SDL_INIT_AUDIO*/) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER /*| SDL_INIT_AUDIO*/) < 0)
 	{
 		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
 		sucess = false;
@@ -98,9 +110,11 @@ bool loadMedia()
 {
 	bool success = true;
 
-	if (!Dot::init(gWindow.getRenderer()))
+	gSplashScreenTexture.setRenderer(gWindow.getRenderer());
+
+	if (!gSplashScreenTexture.loadFromFile("45_timer_callbacks/splash.png"))
 	{
-		printf("Issue initalizing Dot!\n");
+		printf("Issue initalizing Splash Screen!\n");
 		success = false;
 	}
 	
@@ -109,7 +123,7 @@ bool loadMedia()
 
 void close()
 {
-	Dot::free();
+	gSplashScreenTexture.free();
 
 	gWindow.free();
 
@@ -145,10 +159,8 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			Dot dot(true);
-
-			//Keeps track of the time between steps
-			OTimer stepTimer;
+			//Set callback 
+			SDL_TimerID timerID = SDL_AddTimer(3 * 1000, callback, "3 seconds waited!");
 
 			//While application is running
 			while (!quit)
@@ -161,29 +173,21 @@ int main( int argc, char* args[] )
 					{
 						quit = true;
 					}//end if
-					
-					dot.handleEvent(e);
 				}//end while
-
-				//Calucate time step
-				float timeStep = stepTimer.getTicks() / 1000.f;
-
-				//Move for time step
-				dot.move(timeStep);
-
-				//Reset the timer
-				stepTimer.start();
 				
 				//Clear screen
 				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gWindow.getRenderer());
 
 				//Render  Dot
-				dot.render();
+				gSplashScreenTexture.render(0, 0);
 
 				//Update screen
 				SDL_RenderPresent(gWindow.getRenderer());
 			}//end main loop
+
+			//Remove timer in case the call back was not called
+			SDL_RemoveTimer(timerID);
 		}//end else
 	}//end if
 
