@@ -22,13 +22,16 @@ const int LEVEL_HEIGHT = 480;
 //The window we'll be rendering to
 OWindow gWindow;
 
-//Test our callback function
-Uint32 callback(Uint32 interval, void* param);
-
 OTexture gSplashScreenTexture;
 
-//Our test thread function
-int threadFunction(void* param);
+//Our worker thread function
+int worker(void* data);
+
+//Data access semaphore
+SDL_sem *gDataLock = NULL;
+
+//The data buffer
+int gData = -1;
 
 //Starts up SDL and creates a window
 bool init();
@@ -45,18 +48,33 @@ SDL_Surface* loadSurface(std::string path);
 //Loads individual image as texture
 SDL_Texture* loadTexture(std::string path);
 
-Uint32 callback(Uint32 interval, void* param)
+int worker(void* data)
 {
-	//print callback message
-	printf("Callback called back with message: %s\n", (char*)param);
+	printf("%s starting...\n", data);
 
-	return 0;
-}
+	//Pre thread random seeding
+	srand(SDL_GetTicks());
 
-int threadFunction(void* param)
-{
-	//Print incoming data
-	printf("Running thread value = %d\n", (int)param);
+	//Work 5 times
+	for (int i = 0; i < 5; ++i)
+	{
+		//wait randomly
+		SDL_Delay(16 + rand() % 32);
+
+		//Lock
+		SDL_SemWait(gDataLock);
+
+		//print pre work data
+		printf("%s sets %d\n\n", data, gData);
+
+		//Unlock
+		SDL_SemPost(gDataLock);
+
+		//Wait randomly 
+		SDL_Delay(16 + rand() % 640);
+	}
+
+	printf("%s finished!\n\n", data);
 
 	return 0;
 }
@@ -122,6 +140,9 @@ bool loadMedia()
 {
 	bool success = true;
 
+	//Initalize semaphore
+	gDataLock = SDL_CreateSemaphore(1);
+
 	gSplashScreenTexture.setRenderer(gWindow.getRenderer());
 
 	if (!gSplashScreenTexture.loadFromFile("45_timer_callbacks/splash.png"))
@@ -136,6 +157,10 @@ bool loadMedia()
 void close()
 {
 	gSplashScreenTexture.free();
+
+	//Free Semaphore
+	SDL_DestroySemaphore(gDataLock);
+	gDataLock = NULL;
 
 	gWindow.free();
 
@@ -172,8 +197,10 @@ int main( int argc, char* args[] )
 			SDL_Event e;
 
 			//Run the thread
-			int data = 101;
-			SDL_Thread* threadID = SDL_CreateThread(threadFunction, "LazyThread", (void*)data);
+			srand(SDL_GetTicks());
+			SDL_Thread *threadA = SDL_CreateThread(worker, "Thread A", (void*)"Thread A");
+			SDL_Delay(16 + rand() % 32);
+			SDL_Thread *threadB = SDL_CreateThread(worker, "Thread B", (void*)"Thread B");
 
 			//While application is running
 			while (!quit)
@@ -200,7 +227,8 @@ int main( int argc, char* args[] )
 			}//end main loop
 
 			//Remove timer in case the call back was not called
-			SDL_WaitThread(threadID, NULL);
+			SDL_WaitThread(threadA, NULL);
+			SDL_WaitThread(threadB, NULL);
 		}//end else
 	}//end if
 
