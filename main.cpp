@@ -28,7 +28,7 @@ OTexture gSplashScreenTexture;
 int worker(void* data);
 
 //Data access semaphore
-SDL_sem *gDataLock = NULL;
+SDL_SpinLock gDataLock = 0;
 
 //The data buffer
 int gData = -1;
@@ -62,13 +62,19 @@ int worker(void* data)
 		SDL_Delay(16 + rand() % 32);
 
 		//Lock
-		SDL_SemWait(gDataLock);
+		SDL_AtomicLock(&gDataLock);
 
 		//print pre work data
 		printf("%s sets %d\n\n", data, gData);
 
+		//"Work"
+		gData = rand() % 256;
+
+		//Print post work data
+		printf("%s sets %d\n\n", data, gData);
+
 		//Unlock
-		SDL_SemPost(gDataLock);
+		SDL_AtomicUnlock(&gDataLock);
 
 		//Wait randomly 
 		SDL_Delay(16 + rand() % 640);
@@ -140,9 +146,6 @@ bool loadMedia()
 {
 	bool success = true;
 
-	//Initalize semaphore
-	gDataLock = SDL_CreateSemaphore(1);
-
 	gSplashScreenTexture.setRenderer(gWindow.getRenderer());
 
 	if (!gSplashScreenTexture.loadFromFile("45_timer_callbacks/splash.png"))
@@ -157,10 +160,6 @@ bool loadMedia()
 void close()
 {
 	gSplashScreenTexture.free();
-
-	//Free Semaphore
-	SDL_DestroySemaphore(gDataLock);
-	gDataLock = NULL;
 
 	gWindow.free();
 
