@@ -3,6 +3,7 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
+#include <SDL_thread.h>
 #include <SDL_image.h>
 
 #include <stdio.h>
@@ -26,6 +27,9 @@ Uint32 callback(Uint32 interval, void* param);
 
 OTexture gSplashScreenTexture;
 
+//Our test thread function
+int threadFunction(void* param);
+
 //Starts up SDL and creates a window
 bool init();
 
@@ -45,6 +49,14 @@ Uint32 callback(Uint32 interval, void* param)
 {
 	//print callback message
 	printf("Callback called back with message: %s\n", (char*)param);
+
+	return 0;
+}
+
+int threadFunction(void* param)
+{
+	//Print incoming data
+	printf("Running thread value = %d\n", (int)param);
 
 	return 0;
 }
@@ -159,8 +171,9 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//Set callback 
-			SDL_TimerID timerID = SDL_AddTimer(3 * 1000, callback, "3 seconds waited!");
+			//Run the thread
+			int data = 101;
+			SDL_Thread* threadID = SDL_CreateThread(threadFunction, "LazyThread", (void*)data);
 
 			//While application is running
 			while (!quit)
@@ -187,7 +200,7 @@ int main( int argc, char* args[] )
 			}//end main loop
 
 			//Remove timer in case the call back was not called
-			SDL_RemoveTimer(timerID);
+			SDL_WaitThread(threadID, NULL);
 		}//end else
 	}//end if
 
