@@ -25,7 +25,18 @@ OWindow gWindow;
 OTexture gSplashScreenTexture;
 
 //Our worker thread function
-int worker(void* data);
+int producer(void* data);
+int consumer(void* data);
+void produce();
+void consume();
+
+//the protective mutex
+SDL_mutex *gBufferLock = NULL;
+
+//The conditions
+SDL_cond *gCanProduce = NULL;
+SDL_cond *gCanConsume = NULL;
+
 
 //Data access semaphore
 SDL_SpinLock gDataLock = 0;
@@ -48,41 +59,95 @@ SDL_Surface* loadSurface(std::string path);
 //Loads individual image as texture
 SDL_Texture* loadTexture(std::string path);
 
-int worker(void* data)
+int producer(void *data)
 {
-	printf("%s starting...\n", data);
+	printf("\nProducer started....\n");
 
-	//Pre thread random seeding
+	//Seed thread random
 	srand(SDL_GetTicks());
 
-	//Work 5 times
+	//Produce
 	for (int i = 0; i < 5; ++i)
 	{
-		//wait randomly
-		SDL_Delay(16 + rand() % 32);
+		//Wait
+		SDL_Delay(rand() % 1000);
 
-		//Lock
-		SDL_AtomicLock(&gDataLock);
-
-		//print pre work data
-		printf("%s sets %d\n\n", data, gData);
-
-		//"Work"
-		gData = rand() % 256;
-
-		//Print post work data
-		printf("%s sets %d\n\n", data, gData);
-
-		//Unlock
-		SDL_AtomicUnlock(&gDataLock);
-
-		//Wait randomly 
-		SDL_Delay(16 + rand() % 640);
+		//Produce
+		produce();
 	}
 
-	printf("%s finished!\n\n", data);
+	printf("\nProducer Finished!\n");
 
 	return 0;
+}
+
+int consumer(void *data)
+{
+	printf("\nConsumer Started....\n");
+
+	//Seed random thread 
+	srand(SDL_GetTicks());
+
+	for (int i =0 ; i < 5; ++i)
+	{
+		//Wait
+		SDL_Delay(rand() % 1000);
+
+		//Consume
+		consume();
+	}
+
+	printf("\nConsumer finished!\n");
+
+	return 0;
+}
+
+void produce()
+{
+	//Lock
+	SDL_LockMutex(gBufferLock);
+
+	//If the buffer is full
+	if (gData != -1)
+	{
+		//Wait for buffer to be cleared
+		printf("\nProducer encountered full buffer, waiting for consumer to empty buffer...\n");
+		SDL_CondWait(gCanProduce, gBufferLock);
+	}
+
+	//Fill and show buffer
+	gData = rand() % 255;
+	printf("\nProduced %d\n", gData);
+
+	//Unlock
+	SDL_UnlockMutex(gBufferLock);
+
+	//Signal consumer
+	SDL_CondSignal(gCanConsume);
+}
+
+void consume()
+{
+	//Lock
+	SDL_LockMutex(gBufferLock);
+
+	//If the buffer is empty
+	if (gData == -1)
+	{
+		//Wait for the buffer to be filled
+		printf("\nConsumer encountereed empty buffer, waiting for producer to fill buffer...\n");
+		SDL_CondWait(gCanConsume, gBufferLock);
+	}
+
+	//Show and empty buffer
+	printf("\nConsumed %d\n", gData);
+	gData = -1;
+
+	//Unlock
+	SDL_UnlockMutex(gBufferLock);
+
+	//Signal Producer
+	SDL_CondSignal(gCanProduce);
 }
 
 bool init()
@@ -146,6 +211,13 @@ bool loadMedia()
 {
 	bool success = true;
 
+	//Create Mutex
+	gBufferLock = SDL_CreateMutex();
+
+	//Create conditions
+	gCanProduce = SDL_CreateCond();
+	gCanConsume = SDL_CreateCond();
+
 	gSplashScreenTexture.setRenderer(gWindow.getRenderer());
 
 	if (!gSplashScreenTexture.loadFromFile("45_timer_callbacks/splash.png"))
@@ -160,6 +232,15 @@ bool loadMedia()
 void close()
 {
 	gSplashScreenTexture.free();
+
+	//Destroy the mutex
+	SDL_DestroyMutex(gBufferLock);
+	gBufferLock = NULL;
+
+	SDL_DestroyCond(gCanConsume);
+	SDL_DestroyCond(gCanProduce);
+	gCanConsume = NULL;
+	gCanProduce = NULL;
 
 	gWindow.free();
 
@@ -197,9 +278,9 @@ int main( int argc, char* args[] )
 
 			//Run the thread
 			srand(SDL_GetTicks());
-			SDL_Thread *threadA = SDL_CreateThread(worker, "Thread A", (void*)"Thread A");
+			SDL_Thread *threadA = SDL_CreateThread(producer, "Thread A", (void*)"Thread A");
 			SDL_Delay(16 + rand() % 32);
-			SDL_Thread *threadB = SDL_CreateThread(worker, "Thread B", (void*)"Thread B");
+			SDL_Thread *threadB = SDL_CreateThread(consumer, "Thread B", (void*)"Thread B");
 
 			//While application is running
 			while (!quit)
