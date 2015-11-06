@@ -3,15 +3,10 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
-#include <SDL_thread.h>
-#include <SDL_image.h>
-
+#include <SDL_opengl.h>
+#include <gl\GLU.h>
 #include <stdio.h>
 #include <string>
-
-#include "OWindow.h"
-#include "Dot.h"
-#include "OTexture.h"
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -20,32 +15,28 @@ const int LEVEL_WIDTH = 640;
 const int LEVEL_HEIGHT = 480;
 
 //The window we'll be rendering to
-OWindow gWindow;
-
-OTexture gSplashScreenTexture;
-
-//Our worker thread function
-int producer(void* data);
-int consumer(void* data);
-void produce();
-void consume();
-
-//the protective mutex
-SDL_mutex *gBufferLock = NULL;
-
-//The conditions
-SDL_cond *gCanProduce = NULL;
-SDL_cond *gCanConsume = NULL;
-
-
-//Data access semaphore
-SDL_SpinLock gDataLock = 0;
-
-//The data buffer
-int gData = -1;
+SDL_Window *gWindow = NULL;
 
 //Starts up SDL and creates a window
 bool init();
+
+//Initializes matrices and clear color
+bool initGL();
+
+//Input handler
+void handleKeys(unsigned char key, int x, int y);
+
+//Per frame update
+void update();
+
+//Renders quad to the screen
+void render();
+
+//OpenGL context
+SDL_GLContext gContext;
+
+//Render flag
+bool gRenderQuad = true;
 
 //Loads media
 bool loadMedia();
@@ -59,95 +50,35 @@ SDL_Surface* loadSurface(std::string path);
 //Loads individual image as texture
 SDL_Texture* loadTexture(std::string path);
 
-int producer(void *data)
+void handleKeys(unsigned char key, int x, int y)
 {
-	printf("\nProducer started....\n");
-
-	//Seed thread random
-	srand(SDL_GetTicks());
-
-	//Produce
-	for (int i = 0; i < 5; ++i)
+	//toggle quad
+	if (key == 'q')
 	{
-		//Wait
-		SDL_Delay(rand() % 1000);
-
-		//Produce
-		produce();
+		gRenderQuad = !gRenderQuad;
 	}
-
-	printf("\nProducer Finished!\n");
-
-	return 0;
 }
 
-int consumer(void *data)
+void update()
 {
-	printf("\nConsumer Started....\n");
-
-	//Seed random thread 
-	srand(SDL_GetTicks());
-
-	for (int i =0 ; i < 5; ++i)
-	{
-		//Wait
-		SDL_Delay(rand() % 1000);
-
-		//Consume
-		consume();
-	}
-
-	printf("\nConsumer finished!\n");
-
-	return 0;
+	//No per frame update needed
 }
 
-void produce()
+void render()
 {
-	//Lock
-	SDL_LockMutex(gBufferLock);
+	//Clear color buffer 
+	glClear(GL_COLOR_BUFFER_BIT);
 
-	//If the buffer is full
-	if (gData != -1)
+	//Render quad
+	if (gRenderQuad)
 	{
-		//Wait for buffer to be cleared
-		printf("\nProducer encountered full buffer, waiting for consumer to empty buffer...\n");
-		SDL_CondWait(gCanProduce, gBufferLock);
+		glBegin(GL_QUADS);
+			glVertex2f(-0.5f, -0.5f);
+			glVertex2f(0.5f, -0.5f);
+			glVertex2f(0.5f, 0.5f);
+			glVertex2f(-0.5f, 0.5f);
+		glEnd();
 	}
-
-	//Fill and show buffer
-	gData = rand() % 255;
-	printf("\nProduced %d\n", gData);
-
-	//Unlock
-	SDL_UnlockMutex(gBufferLock);
-
-	//Signal consumer
-	SDL_CondSignal(gCanConsume);
-}
-
-void consume()
-{
-	//Lock
-	SDL_LockMutex(gBufferLock);
-
-	//If the buffer is empty
-	if (gData == -1)
-	{
-		//Wait for the buffer to be filled
-		printf("\nConsumer encountereed empty buffer, waiting for producer to fill buffer...\n");
-		SDL_CondWait(gCanConsume, gBufferLock);
-	}
-
-	//Show and empty buffer
-	printf("\nConsumed %d\n", gData);
-	gData = -1;
-
-	//Unlock
-	SDL_UnlockMutex(gBufferLock);
-
-	//Signal Producer
-	SDL_CondSignal(gCanProduce);
 }
 
 bool init()
@@ -156,27 +87,49 @@ bool init()
 	bool sucess = true;
 
 	//Initalize SDL
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER /*| SDL_INIT_AUDIO*/) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO /*| SDL_INIT_TIMER /*| SDL_INIT_AUDIO*/) < 0)
 	{
 		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
 		sucess = false;
 	}//end if
 	else
 	{
-		//Set texture filtering to liner
-		if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1"))
-		{
-			printf("Warning: Linear texture filtering not enabled!");
-		}
+		//Use OpenGL 2.1
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
 		//Create Window
-		if (!gWindow.init("Tile Engine!"))
+		gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+		if (gWindow == NULL)
 		{
-			printf("Window could not be created!");
+			printf("Window could not be created! SDL Error: %s\n", SDL_GetError());
 			sucess = false;
 		}
 		else
 		{
+
+			//Create context
+			gContext = SDL_GL_CreateContext(gWindow);
+			if (gContext == NULL)
+			{
+				printf("OpenGL context could not be created! SDL Error: %s\n", SDL_GetError());
+				sucess = false;
+			}
+			else
+			{
+				//Use Vsync
+				if (SDL_GL_SetSwapInterval(1) < 0)
+				{
+					printf("Warning: Unable to set VSync! SDL Error: %s\n", SDL_GetError());
+					sucess = false;
+				}
+				//Initalize OpenGL
+				if (!initGL())
+				{
+					printf("Unable to Initalize OpenGL!\n");
+					sucess = false;
+				}
+			}
 			
 #ifdef _SDL_IMAGE_H
 			//initialize PNG loading
@@ -207,42 +160,60 @@ bool init()
 	return sucess;
 }//end init
 
+bool initGL()
+{
+	bool success = true;
+	GLenum error = GL_NO_ERROR;
+
+	//Initalize Projection Matrix
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	//Check for error
+	error = glGetError();
+	if (error != GL_NO_ERROR)
+	{
+		printf("Error initalizing OpenGL! %s\n", gluErrorString(error));
+		success = false;
+	}
+
+	//Initialize Modelview Matrix
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	//Check for error
+	error = glGetError();
+	if (error != GL_NO_ERROR)
+	{
+		printf("Error initalizing OpenGL! %s\n", gluErrorString(error));
+		success = false;
+	}
+
+	//Initalize clear color
+	glClearColor(0.f, 0.f, 0.f, 1.f);
+
+	//check for error
+	error = glGetError();
+	if (error != GL_NO_ERROR)
+	{
+		printf("Error initalizing OpenGL! %s\n", gluErrorString(error));
+		success = false;
+	}
+
+	return success;
+}
+
 bool loadMedia() 
 {
 	bool success = true;
-
-	//Create Mutex
-	gBufferLock = SDL_CreateMutex();
-
-	//Create conditions
-	gCanProduce = SDL_CreateCond();
-	gCanConsume = SDL_CreateCond();
-
-	gSplashScreenTexture.setRenderer(gWindow.getRenderer());
-
-	if (!gSplashScreenTexture.loadFromFile("45_timer_callbacks/splash.png"))
-	{
-		printf("Issue initalizing Splash Screen!\n");
-		success = false;
-	}
 	
 	return success;
 }//end loadMedia
 
 void close()
 {
-	gSplashScreenTexture.free();
-
-	//Destroy the mutex
-	SDL_DestroyMutex(gBufferLock);
-	gBufferLock = NULL;
-
-	SDL_DestroyCond(gCanConsume);
-	SDL_DestroyCond(gCanProduce);
-	gCanConsume = NULL;
-	gCanProduce = NULL;
-
-	gWindow.free();
+	SDL_DestroyWindow(gWindow);
+	gWindow = NULL;
 
 	//Quit SDL subsystems
 #ifdef _SDL_TTF_H 
@@ -276,11 +247,8 @@ int main( int argc, char* args[] )
 			//Event Handler
 			SDL_Event e;
 
-			//Run the thread
-			srand(SDL_GetTicks());
-			SDL_Thread *threadA = SDL_CreateThread(producer, "Thread A", (void*)"Thread A");
-			SDL_Delay(16 + rand() % 32);
-			SDL_Thread *threadB = SDL_CreateThread(consumer, "Thread B", (void*)"Thread B");
+			//enable text input
+			SDL_StartTextInput();
 
 			//While application is running
 			while (!quit)
@@ -293,22 +261,22 @@ int main( int argc, char* args[] )
 					{
 						quit = true;
 					}//end if
+					else if (e.type == SDL_TEXTINPUT)
+					{
+						int x = 0, y = 0;
+						SDL_GetMouseState(&x, &y);
+						handleKeys(e.text.text[0], x, y);
+					}
 				}//end while
 				
-				//Clear screen
-				SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
-				SDL_RenderClear(gWindow.getRenderer());
-
-				//Render  Dot
-				gSplashScreenTexture.render(0, 0);
+				//Render quad
+				render();
 
 				//Update screen
-				SDL_RenderPresent(gWindow.getRenderer());
+				SDL_GL_SwapWindow(gWindow);
 			}//end main loop
 
-			//Remove timer in case the call back was not called
-			SDL_WaitThread(threadA, NULL);
-			SDL_WaitThread(threadB, NULL);
+			SDL_StopTextInput();
 		}//end else
 	}//end if
 

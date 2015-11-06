@@ -7,13 +7,14 @@
 #include "Util.h"
 #include "Tile.h"
 
-extern const int SCREEN_WIDTH;
-extern const int SCREEN_HEIGHT;
-extern const int LEVEL_WIDTH;
-extern const int LEVEL_HEIGHT;
-
 //Particle count
 const int TOTAL_PARTICLES = 20;
+
+//Screen dimension constants
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+const int LEVEL_WIDTH = 640;
+const int LEVEL_HEIGHT = 480;
 
 class Dot
 {
